@@ -1,0 +1,36 @@
+name: 📝 Create commit
+description: Atomically commit multiple files through the Git Database API using a GitHub App token
+inputs:
+  token:
+    description: GitHub App installation token with contents write permission
+    required: true
+  branch:
+    description: Target branch to create or update
+    required: true
+  base:
+    description: Base branch for creating a new target branch
+    required: false
+  message:
+    description: Commit message
+    required: true
+  files:
+    description: JSON array of {path, content, encoding?} file changes
+    required: true
+  author-name:
+    description: Commit author and committer name
+    required: false
+    default: Rod GitHub App
+  author-email:
+    description: Commit author and committer email
+    required: false
+    default: github-actions[bot]@users.noreply.github.com
+outputs:
+  sha:
+    description: Created commit SHA
+  branch:
+    description: Updated branch
+  files:
+    description: Number of files included
+runs:
+  using: node24
+  main: ../../dist/commit.js
