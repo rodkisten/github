@@ -4,6 +4,10 @@ inputs:
   working-directory:
     description: Project directory
     default: '.'
+  scope:
+    description: Matched centralized path-filter name exposed as ROD_CI_FILTER
+    required: false
+    default: ''
   test-command:
     description: Test command
     default: npm test
