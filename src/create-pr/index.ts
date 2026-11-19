@@ -17,15 +17,22 @@ async function main(): Promise<void> {
   const updateExisting = core.getBooleanInput('update-existing');
   const conversationUrl = core.getInput('conversation-url');
   let body = core.getInput('body');
-  if (conversationUrl && !body.includes(conversationUrl)) body = `${body.trim()}\\n\\n## 💬 Conversation\\n${conversationUrl}`.trim();
-  const existing = await octokit.paginate(octokit.rest.pulls.list, { owner, repo, state: 'open', head: `${owner}:${head}`, base, per_page: 100 });
+  if (conversationUrl && !body.includes(conversationUrl)) {
+    body = [body.trim(), '## 💬 Conversation', conversationUrl].filter(Boolean).join('\\n\\n');
+  }
+  const existing = await octokit.paginate(octokit.rest.pulls.list, {
+    owner, repo, state: 'open', head: `${owner}:${head}`, base, per_page: 100,
+  });
   let pullNumber: number;
   let pullUrl: string;
   let created = false;
-  if (pull) {
-    if (!updateExisting) throw new Error(`PR #${pull.number} already exists for ${head} → ${base}`);
-    const response = await octokit.rest.pulls.update({ owner, repo, pull_number: pullNumber, title, body, ...(core.getInput('maintainer-can-modify') ? { maintainer_can_modify: core.getBooleanInput('maintainer-can-modify') } : {}) });
-    pull = response.data;
+  if (existing[0]) {
+    if (!updateExisting) throw new Error(`PR #${existing[0].number} already exists for ${head} → ${base}`);
+    const response = await octokit.rest.pulls.update({
+      owner, repo, pull_number: existing[0].number, title, body,
+    });
+    pullNumber = response.data.number;
+    pullUrl = response.data.html_url;
   } else {
     const response = await octokit.rest.pulls.create({ owner, repo, head, base, title, body, draft });
     pullNumber = response.data.number;
@@ -35,7 +42,7 @@ async function main(): Promise<void> {
   const labels = csv(core.getInput('labels'));
   const reviewers = csv(core.getInput('reviewers'));
   if (labels.length) await octokit.rest.issues.addLabels({ owner, repo, issue_number: pullNumber, labels });
-  if (reviewers.length) await octokit.rest.pulls.requestReviewers({ owner, repo, pull_number: pull.number, reviewers });
+  if (reviewers.length) await octokit.rest.pulls.requestReviewers({ owner, repo, pull_number: pullNumber, reviewers });
   core.setOutput('number', String(pullNumber));
   core.setOutput('url', pullUrl);
   core.setOutput('created', String(created));
