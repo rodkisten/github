@@ -10,9 +10,10 @@ async function main(): Promise<void> {
   ];
   const results: Array<{ name: string } & CommandResult> = [];
   let failure: Error | undefined;
+  const skipped: string[] = [];
   for (const task of tasks) {
-    if (!task.enabled) continue;
-    if (!task.command.trim()) throw new Error(`Missing ${task.name} command`);
+    if (!task.enabled) { skipped.push(task.name); continue; }
+    if (!task.command.trim()) { failure = new Error(`Missing ${task.name} command`); break; }
     core.startGroup(`🟦 ${task.name}: ${task.command}`);
     try {
       const result = await execute(task.command, cwd);
@@ -21,13 +22,18 @@ async function main(): Promise<void> {
         failure = new Error(`${task.name} exited with code ${result.exitCode}`);
         break;
       }
+    } catch (error) {
+      failure = error instanceof Error ? error : new Error(String(error));
+      break;
     } finally { core.endGroup(); }
   }
   await core.summary.addHeading('🟦 Shared Node CI')
     .addTable([
       [{ data: 'Task', header: true }, { data: 'Exit', header: true }, { data: 'Duration (ms)', header: true }],
       ...results.map(r => [r.name, String(r.exitCode), String(r.durationMs)]),
-    ]).write();
+    ])
+    .addRaw(`Skipped: ${skipped.join(', ') || 'none'}\\n\\nStatus: **${failure ? 'failed' : 'passed'}**\\n`)
+    .write();
   if (failure) throw failure;
 }
 main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
