@@ -46,6 +46,14 @@ on:
         type: boolean
         required: false
         default: true
+      lint-command:
+        type: string
+        required: false
+        default: npm run lint
+      run-lint:
+        type: boolean
+        required: false
+        default: false
     outputs:
       changes:
         description: JSON array of matched filter names
@@ -107,6 +115,8 @@ jobs:
           build-command: ${{ inputs.build-command }}
           run-tests: ${{ inputs.run-tests }}
           run-build: ${{ inputs.run-build }}
+          lint-command: ${{ inputs.lint-command }}
+          run-lint: ${{ inputs.run-lint }}
       - name: 📋 Filter summary
         if: always()
         uses: rodkisten/github/actions/ci-summary@v1
