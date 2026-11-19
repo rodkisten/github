@@ -27,12 +27,12 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: rodkisten/github/actions/setup-node@v1
+      - uses: rodkisten/github/actions/setup-node@main
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ inputs.working-directory }}
       - name: 🟦 TypeScript test/build runner
-        uses: rodkisten/github/actions/node-ci@v1
+        uses: rodkisten/github/actions/node-ci@main
         with:
           working-directory: ${{ inputs.working-directory }}
           test-command: ${{ inputs.test-command }}
@@ -41,7 +41,7 @@ jobs:
           run-build: ${{ inputs.run-build }}
       - name: Summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@v1
+        uses: rodkisten/github/actions/ci-summary@main
         with:
           title: Node CI
           status: ${{ job.status }}
