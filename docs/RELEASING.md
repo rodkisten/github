@@ -35,7 +35,7 @@ test -s dist/paths-filter.js
 Immutable tags such as `v1.2.3` are created by semantic-release. Do not use `@v1` until a moving major tag is explicitly implemented; prefer `@v1.2.3` or an immutable SHA.
 
 ## 🔐 Permissions
-The release job needs `contents: write` to push its generated assets and tag, and GitHub Release permissions. Branch protection must permit the release bot to push its generated commit. The workflow authenticates with `BOT_APP_ID` (secret or variable) and `BOT_PRIVATE_KEY` (secret), using `actions/create-github-app-token@v2`. Install the App on this repository with Contents write and Issues/Pull requests write permissions. Repository rulesets must explicitly allow the App to push release commits and tags.
+The release job needs `contents: write` to push its generated assets and tag, and GitHub Release permissions. Branch protection must permit the release bot to push its generated commit. The workflow authenticates with `BOT_APP_ID` (secret) and `BOT_PRIVATE_KEY` (secret), using `actions/create-github-app-token@v2`. Install the App on this repository with Contents write and Issues/Pull requests write permissions. Repository rulesets must explicitly allow the App to push release commits and tags.
 
 ## 🚨 Troubleshooting
 - 🧱 **Protected main:** release bot cannot commit generated `dist/`; adjust rules or use a trusted App.
@@ -58,9 +58,11 @@ Release writes use `steps.app-token.outputs.token`, never `secrets.GITHUB_TOKEN`
 
 ### 🔑 Required repository settings
 
-1. In **Settings → Secrets and variables → Actions → Variables**, create `BOT_APP_ID` with the numeric GitHub App ID (alternatively, set it as an Actions secret).
+1. In **Settings → Secrets and variables → Actions → Secrets**, create `BOT_APP_ID` with the numeric GitHub App ID.
 2. In **Settings → Secrets and variables → Actions → Secrets**, create `BOT_PRIVATE_KEY` containing the complete PEM private key for that App.
 3. Install the App on `rodkisten/github`, granting **Contents: read/write**, **Issues: read/write** and **Pull requests: read/write** for release publishing.
 4. Re-run the failed lockfile workflow and confirm its App token is created before merging this PR.
 
 The workflows check presence of credentials without printing their values. Missing credentials are a configuration error; they must not silently fall back to `GITHUB_TOKEN`, because that would violate the bot-only commit policy.
+
+> 🔐 Both `BOT_APP_ID` and `BOT_PRIVATE_KEY` are **Actions secrets**. If a PR check still reports them missing, verify the secrets are accessible to the repository and workflow. Secrets from an organization require repository access policies; secrets are withheld from forked pull requests and Dependabot-triggered workflows. Never print secret values in logs.
