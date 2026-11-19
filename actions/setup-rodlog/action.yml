@@ -49,6 +49,6 @@ runs:
         install -m 0755 "$dir/$file" "$RUNNER_TEMP/rodlog"
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
         echo "binary=$RUNNER_TEMP/rodlog" >> "$GITHUB_OUTPUT"
-        "$RUNNER_TEMP/rodlog" --help >/dev/null
+        "$RUNNER_TEMP/rodlog" version
         echo "### 🌈 rodlog ready" >> "$GITHUB_STEP_SUMMARY"
         echo "Verified \`$file\` against the published SHA-256 checksum." >> "$GITHUB_STEP_SUMMARY"
