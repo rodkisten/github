@@ -173,21 +173,3 @@ PY
 done
 printf '\033[38;5;213m✦ Finished:\033[0m %d successful, %d failed, %d skipped\n' "$success" "$failure" "$skipped"
 ((failure == 0))
-\n'*}
-      if [[ $state == NEW || $state == SAME ]]; then
-        printf '  ⊘ %s: %s (skipped)\n' "$key" "$state"
-        ((skipped+=1)); continue
-      fi
-      printf '\033[38;5;51m↻ %s\033[0m\n%s\n' "$key" "$result"
-    fi
-    args=("$type" set "$key" --repo "$repo" --body "$value")
-    [[ $scope == env ]] && args+=(--env "$environment")
-    if gh "${args[@]}" >/dev/null; then
-      echo "  OK $key"; ((success+=1))
-    else
-      echo "  FAILED $key" >&2; ((failure+=1))
-    fi
-  done
-done
-printf 'Completed: %d successful, %d failed\n' "$success" "$failure"
-((failure == 0))
