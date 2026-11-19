@@ -31,15 +31,16 @@ async function main(): Promise<void> {
     parentSha = baseRef.data.object.sha;
   }
   const parent = await octokit.rest.git.getCommit({ owner, repo, commit_sha: parentSha });
+  const blobs = await Promise.all(changes.map(file => octokit.rest.git.createBlob({
+    owner, repo,
+    content: file.content,
+    encoding: file.encoding === 'base64' ? 'base64' : 'utf-8',
+  })));
   const tree = await octokit.rest.git.createTree({
     owner, repo, base_tree: parent.data.tree.sha,
-    tree: changes.map(file => ({
+    tree: changes.map((file, index) => ({
       path: file.path, mode: '100644' as const, type: 'blob' as const,
-      sha: (await octokit.rest.git.createBlob({
-        owner, repo,
-        content: file.content,
-        encoding: file.encoding === 'base64' ? 'base64' : 'utf-8',
-      })).data.sha,
+      sha: blobs[index].data.sha,
     })),
   });
   const commit = await octokit.rest.git.createCommit({
