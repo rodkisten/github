@@ -11,12 +11,12 @@
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: rodkisten/github/actions/setup-rodlog@v1
+  - uses: rodkisten/github/actions/setup-rodlog@main
   - run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
   - run: rodlog exec --mode=transform -- npm run build
 ```
 
-The `@v1` example requires a published major-version tag. During development use `./actions/setup-rodlog` after checking out the shared repository itself.
+The `@main` example requires a published major-version tag. During development use `./actions/setup-rodlog` after checking out the shared repository itself.
 
 ## 🎨 Output modes
 - 🌈 `--mode=transform`: readable, structured terminal diagnostics, retaining command exit status.
