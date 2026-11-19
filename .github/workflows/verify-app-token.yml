@@ -1,0 +1,47 @@
+name: 🤖 Verify Rod GitHub App
+on:
+  pull_request:
+    paths:
+      - .github/workflows/verify-app-token.yml
+      - .github/workflows/release.yml
+      - .github/workflows/repair-lockfile.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: 🔐 Read-only App authentication
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔎 Check secret availability
+        env:
+          BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+          BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
+        run: |
+          if [[ -z "$BOT_APP_ID" ]]; then
+            echo "::error::BOT_APP_ID is unavailable to this workflow"
+            exit 1
+          fi
+          if [[ -z "$BOT_PRIVATE_KEY" ]]; then
+            echo "::error::BOT_PRIVATE_KEY is unavailable to this workflow"
+            exit 1
+          fi
+          echo '🔐 Both secrets are accessible (values hidden).' >> "$GITHUB_STEP_SUMMARY"
+      - name: 🤖 Create read-only installation token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: read
+      - name: 🧪 Verify repository access
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const response = await github.rest.repos.get({ owner, repo });
+            if (response.data.full_name !== `${owner}/${repo}`) throw new Error('Unexpected repository');
+            await core.summary.addHeading('🤖 Rod App authenticated')
+              .addRaw('Read-only installation token verified. No commits, tags or releases created.\n')
+              .write();
