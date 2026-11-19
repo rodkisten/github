@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { validateChanges, type FileChange } from './validate.js';
+import { validateBranchName, validateChanges, type FileChange } from './validate.js';
 
 async function main(): Promise<void> {
   const token = core.getInput('token', { required: true });
@@ -9,6 +9,8 @@ async function main(): Promise<void> {
   const { owner, repo } = github.context.repo;
   const branch = core.getInput('branch', { required: true });
   const base = core.getInput('base') || github.context.payload.repository?.default_branch || 'main';
+  validateBranchName(branch);
+  validateBranchName(base);
   const message = core.getInput('message', { required: true });
   const changes = JSON.parse(core.getInput('files', { required: true })) as FileChange[];
   validateChanges(changes);
