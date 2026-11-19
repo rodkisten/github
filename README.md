@@ -46,7 +46,7 @@ jobs:
 | `actions/node-ci` | Run configurable Node test/build commands with summaries |
 | `workflows/node-ci.yml` | Reusable Node test/build job |
 | `workflows/paths-filter.yml` | Central per-repository path filters |\n| `workflows/filtered-ci.yml` | Dynamic parallel CI matrix from matched filters |
-| `config/paths.yml` | Shared glob rules |
+| `config/paths.yml` | Shared glob rules and per-filter commands |
 
 ## 🗺️ Architecture
 ```text
@@ -88,10 +88,13 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🗂️ Audit workflow inventory for userscripts-cf, photointel, shell and roteador
 - [x] 🧪 Validate every central repository filter config in Vitest
 - [x] 🧹 Add opt-in lint execution to the shared Node CI runner
+- [x] 🎛️ Resolve test/build/lint commands and working directories per filter
+- [x] 🧪 Test per-filter overrides, task opt-outs and invalid command config
 - [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
-- [ ] 🔬 Validate filtered matrix workflow end-to-end on a consumer repository\n- [ ] 🔔 Shared notification and auto-fix actions
+- [ ] 🔬 Validate filtered matrix workflow end-to-end on a consumer repository
+- [ ] 🚀 Migrate `shell/check.yml` to the central filtered CI workflow after release\n- [ ] 🔔 Shared notification and auto-fix actions
 - [ ] 🧹 Audit and migrate repositories, then remove redundant workflows
 
 💬 [Conversation and decisions](https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=plain)
