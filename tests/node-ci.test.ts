@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execute } from '../src/node-ci/runner.js';
-import { getTasks } from '../src/node-ci/index.js';
+import { getTasks } from '../src/node-ci/tasks.js';
 
 describe('TypeScript Node CI runner', () => {
   it('executes a successful command and reports timing', async () => {
