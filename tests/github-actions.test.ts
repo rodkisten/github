@@ -8,7 +8,7 @@ describe('create-pr helpers', () => {
   });
   it('appends the originating conversation with real Markdown line breaks', () => {
     const body = appendConversationUrl('Automated update', 'https://chatgpt.com/share/example');
-    expect(body).toContain('Automated update\n\n## 💬 Conversation\nhttps://chatgpt.com/share/example');
+    expect(body).toBe(['Automated update', '## 💬 Conversation', 'https://chatgpt.com/share/example'].join(String.fromCharCode(10, 10)));
     expect(appendConversationUrl(body, 'https://chatgpt.com/share/example')).toBe(body);
   });
   it('does not append an empty or duplicate URL', () => {
