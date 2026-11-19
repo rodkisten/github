@@ -17,8 +17,6 @@ repositories:
         - 'package.json'
   photointel:
     filters:
-      manage:
-        - 'apps/manage/**'
       api-contracts:
         - 'packages/contracts/**'
       api:
