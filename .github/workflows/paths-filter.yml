@@ -1,67 +1,104 @@
-name: Shared paths filter
+name: 🧬 Shared TypeScript paths filter
 on:
   workflow_call:
     inputs:
       repository-key:
+        description: Repository configuration key (defaults to caller repo name)
         type: string
         required: false
         default: ''
       base:
+        description: Optional base commit or ref for push comparison
         type: string
         required: false
         default: ''
+      config-repository:
+        description: Repository holding centralized filter rules
+        type: string
+        required: false
+        default: rodkisten/github
+      config-ref:
+        description: Reviewed ref containing the filter configuration
+        type: string
+        required: false
+        default: main
+      config-path:
+        description: YAML path in the configuration repository
+        type: string
+        required: false
+        default: config/paths.yml
+      working-directory:
+        type: string
+        required: false
+        default: '.'
+      test-command:
+        type: string
+        required: false
+        default: npm test
+      build-command:
+        type: string
+        required: false
+        default: npm run build
+      lint-command:
+        type: string
+        required: false
+        default: npm run lint
+      run-tests:
+        type: boolean
+        required: false
+        default: true
+      run-build:
+        type: boolean
+        required: false
+        default: true
+      run-lint:
+        type: boolean
+        required: false
+        default: false
     outputs:
       changes:
-        description: JSON object of matching filters
+        description: JSON array of matching filter names
         value: ${{ jobs.filter.outputs.changes }}
       any:
         description: Whether any filter matched
         value: ${{ jobs.filter.outputs.any }}
+      files:
+        description: JSON array of changed file paths
+        value: ${{ jobs.filter.outputs.files }}
+      full-run:
+        description: Whether all filters were selected as a safe initial-push fallback
+        value: ${{ jobs.filter.outputs.full-run }}
+      matrix:
+        description: JSON array of resolved filter command configurations
+        value: ${{ jobs.filter.outputs.matrix }}
 jobs:
   filter:
+    name: 🟦 Evaluate changed paths
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
     outputs:
       changes: ${{ steps.paths.outputs.changes }}
-      any: ${{ steps.decision.outputs.any }}
+      any: ${{ steps.paths.outputs.any }}
+      files: ${{ steps.paths.outputs.files }}
+      full-run: ${{ steps.paths.outputs.full-run }}
+      matrix: ${{ steps.paths.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/checkout@v4
-        with:
-          repository: rodkisten/github
-          ref: feat/shared-ci-foundation
-          path: .shared-ci
-          persist-credentials: false
-      - name: Select repository filters
-        id: config
-        shell: bash
-        env:
-          REPOSITORY_KEY: ${{ inputs.repository-key }}
-        run: |
-          python -m pip install --disable-pip-version-check 'PyYAML==6.0.2'
-          python .shared-ci/scripts/select-paths.py \
-            --config .shared-ci/config/paths.yml \
-            --repository "${REPOSITORY_KEY:-${GITHUB_REPOSITORY#*/}}" \
-            --output "$RUNNER_TEMP/selected-filters.yml"
-          echo "file=$RUNNER_TEMP/selected-filters.yml" >> "$GITHUB_OUTPUT"
-      - uses: dorny/paths-filter@v3
+      - name: 🧬 Evaluate filters using Node 24
         id: paths
+        uses: rodkisten/github/actions/paths-filter@v1
         with:
+          token: ${{ github.token }}
+          repository-key: ${{ inputs.repository-key }}
+          config-repository: ${{ inputs.config-repository }}
+          config-ref: ${{ inputs.config-ref }}
+          config-path: ${{ inputs.config-path }}
           base: ${{ inputs.base }}
-          filters: ${{ steps.config.outputs.file }}
-      - name: Calculate gate
-        id: decision
-        shell: bash
-        env:
-          CHANGES: ${{ steps.paths.outputs.changes }}
-        run: |
-          python - <<'PY'
-          import json, os
-          changes = json.loads(os.environ.get('CHANGES') or '[]')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
-              out.write(f"any={str(bool(changes)).lower()}\n")
-          PY
+          working-directory: ${{ inputs.working-directory }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+          lint-command: ${{ inputs.lint-command }}
+          run-tests: ${{ inputs.run-tests }}
+          run-build: ${{ inputs.run-build }}
+          run-lint: ${{ inputs.run-lint }}

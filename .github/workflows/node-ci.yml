@@ -27,25 +27,21 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: rodkisten/github/actions/setup-node@feat/shared-ci-foundation
+      - uses: rodkisten/github/actions/setup-node@v1
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ inputs.working-directory }}
-      - name: Test
-        if: inputs.run-tests
-        working-directory: ${{ inputs.working-directory }}
-        env:
-          COMMAND: ${{ inputs.test-command }}
-        run: bash -euo pipefail -c "$COMMAND"
-      - name: Build
-        if: inputs.run-build
-        working-directory: ${{ inputs.working-directory }}
-        env:
-          COMMAND: ${{ inputs.build-command }}
-        run: bash -euo pipefail -c "$COMMAND"
+      - name: 🟦 TypeScript test/build runner
+        uses: rodkisten/github/actions/node-ci@v1
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+          run-tests: ${{ inputs.run-tests }}
+          run-build: ${{ inputs.run-build }}
       - name: Summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@feat/shared-ci-foundation
+        uses: rodkisten/github/actions/ci-summary@v1
         with:
           title: Node CI
           status: ${{ job.status }}
