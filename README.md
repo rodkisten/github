@@ -11,6 +11,7 @@
 - [🧪 Validation](#-validation)
 - [🚧 Roadmap](#-roadmap)
 - [🚀 Release pipeline](#-release-pipeline)
+- [🌈 rodlog integration](#-rodlog-integration)
 
 ## 🚀 Quick start
 Use a reusable workflow from your own repository:
@@ -101,3 +102,7 @@ Grant `contents: read` and `pull-requests: read` to the calling job. The action 
 ## 🚀 Release pipeline
 
 Every push to `main` runs **one build, test and semantic-release workflow**. GitHub Releases and version tags are generated from Conventional Commits, while documentation-only commits run checks without creating a version. See [🚀 Release guide](docs/RELEASING.md) for the complete ToC, examples, permissions and troubleshooting.
+
+## 🌈 rodlog integration
+
+Our PR and release workflows install the verified Go-powered `rodlog` binary for TypeScript, Vitest and bundle diagnostics. See [🌈 rodlog guide](docs/RODLOG.md) for copy-paste recipes, output modes and security notes.
