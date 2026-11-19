@@ -108,7 +108,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.changes.outputs.matrix || '[]') }}
+        include: ${{ fromJSON(needs.changes.outputs.matrix || '[{"filter":"__no_changes__","working-directory":".","test-command":"npm test","build-command":"npm run build","lint-command":"npm run lint","run-tests":false,"run-build":false,"run-lint":false}]') }}
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
