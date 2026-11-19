@@ -18,6 +18,10 @@ describe('TypeScript Node CI runner', () => {
     const result = await execute('node -e "process.exit(7)"', process.cwd());
     expect(result.exitCode).toBe(7);
   });
+  it('passes the matched filter scope to child processes', async () => {
+    const result = await execute("node -e \"process.exit(process.env.ROD_CI_FILTER === 'runtime' ? 0 : 3)\"", process.cwd(), undefined, { ...process.env, ROD_CI_FILTER: 'runtime' });
+    expect(result.exitCode).toBe(0);
+  });
   it('runs from the requested working directory', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'rod-node-ci-'));
     try {
