@@ -28,12 +28,10 @@ repositories:
         paths:
           - '.github/workflows/**'
           - '.github/actions/**'
-        commands:
-          test: false
-          build: npm run build
-          lint: npm run lint
-        - 'tsconfig*.json'
-        - 'vitest.config.*'
+          - 'package.json'
+          - 'package-lock.json'
+          - 'tsconfig*.json'
+          - 'vitest.config.*'
 
   photointel:
     filters:
@@ -54,15 +52,13 @@ repositories:
         depends-on:
           - api-contracts
       frontend-web:
-        paths:
-          - 'apps/web/**'
-          - 'packages/ui/**'
-          - 'packages/shared/**'
+        - 'apps/web/**'
+        - 'packages/ui/**'
+        - 'packages/shared/**'
       frontend-manage:
-        paths:
-          - 'apps/manage/**'
-          - 'packages/ui/**'
-          - 'packages/shared/**'
+        - 'apps/manage/**'
+        - 'packages/ui/**'
+        - 'packages/shared/**'
       gpu:
         - 'gpu/**'
         - 'modal/**'
@@ -100,22 +96,26 @@ repositories:
       app:
         paths:
           - 'src/**'
+          - '!src/wasm/**'
           - 'package.json'
           - 'package-lock.json'
           - 'tsconfig*.json'
           - 'vite.config.*'
         commands:
           test: false
-          build: npm run build
-          lint: npm run lint
+          build: 'npm run build'
+          lint: 'npm run lint'
       wasm:
         paths:
           - 'wasm/**'
           - 'src/wasm/**'
           - 'scripts/wasm/**'
+          - 'tools/shell-flow/**'
+          - 'scripts/build-shell-flow-wasm.sh'
+          - 'scripts/test-shell-flow-wasm.mjs'
         commands:
           test: false
-          build: npm run build
+          build: 'npm run build'
           lint: false
       assets:
         paths:
@@ -123,13 +123,16 @@ repositories:
           - 'assets/**'
         commands:
           test: false
-          build: npm run build
+          build: 'npm run build'
           lint: false
       ci:
-        - '.github/workflows/**'
-        - '.github/actions/**'
-        - 'package.json'
-        - 'package-lock.json'
+        paths:
+          - '.github/workflows/**'
+          - '.github/actions/**'
+        commands:
+          test: false
+          build: 'npm run build'
+          lint: 'npm run lint'
 
   roteador:
     filters:
