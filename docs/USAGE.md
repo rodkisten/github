@@ -17,7 +17,7 @@ Use the App token from `actions/app-token`. The action searches for an open PR w
 ```yaml
 - name: 🔐 Authenticate Rod App
   id: app
-  uses: rodkisten/github/actions/app-token@v1
+  uses: rodkisten/github/actions/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -25,7 +25,7 @@ Use the App token from `actions/app-token`. The action searches for an open PR w
     permission-pull-requests: write
 - name: 🤖 Create or update PR
   id: pr
-  uses: rodkisten/github/actions/create-pr@v1
+  uses: rodkisten/github/actions/create-pr@main
   with:
     token: ${{ steps.app.outputs.token }}
     head: automation/update-lockfile
@@ -46,14 +46,14 @@ The commit action creates one atomic Git commit containing all supplied file cha
 ```yaml
 - name: 🔐 Authenticate Rod App
   id: app
-  uses: rodkisten/github/actions/app-token@v1
+  uses: rodkisten/github/actions/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
     permission-contents: write
 - name: 📝 Commit generated files
   id: commit
-  uses: rodkisten/github/actions/commit@v1
+  uses: rodkisten/github/actions/commit@main
   with:
     token: ${{ steps.app.outputs.token }}
     branch: automation/generated-docs
@@ -74,7 +74,7 @@ on:
     branches: [main]
 jobs:
   ci:
-    uses: rodkisten/github/.github/workflows/node-ci.yml@v1
+    uses: rodkisten/github/.github/workflows/node-ci.yml@main
     with:
       node-version: '24'
       test-command: npm run test:runtime
@@ -90,14 +90,14 @@ on:
     branches: [main]
 jobs:
   changes:
-    uses: rodkisten/github/.github/workflows/paths-filter.yml@v1
+    uses: rodkisten/github/.github/workflows/paths-filter.yml@main
     permissions:
       contents: read
       pull-requests: read
   ci:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.changes), 'runtime')
-    uses: rodkisten/github/.github/workflows/node-ci.yml@v1
+    uses: rodkisten/github/.github/workflows/node-ci.yml@main
 ```
 Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events. Each filter can use the shorthand glob array or an object with `paths` and `depends-on`. When a changed filter declares dependencies, those dependency filters are included transitively in the output, allowing shared contracts and packages to trigger their affected consumers.\n\nOverride `repository-key`, `base`, `config-repository`, `config-ref` or `config-path` in `with:`. On the first push to a new branch, when GitHub provides an all-zero `before` SHA, the action safely selects every configured filter and exposes `full-run: true`; it never silently skips CI because no comparison base exists. The repository configuration is validated in Vitest for `userscripts-cf`, `photointel`, `shell` and `roteador`. The shared Node CI runner also accepts `lint-command` and `run-lint`; lint remains opt-in to avoid unexpectedly changing existing consumers. Example: set `run-lint: true` and `lint-command: npm run lint` on `filtered-ci.yml`. Repository-specific filters extend defaults, and identically named filters replace them.
 
@@ -142,7 +142,7 @@ on:
     branches: [main]
 jobs:
   filtered:
-    uses: rodkisten/github/.github/workflows/filtered-ci.yml@v1
+    uses: rodkisten/github/.github/workflows/filtered-ci.yml@main
     with:
       repository-key: userscripts-cf
       node-version: '24'
@@ -158,7 +158,7 @@ Inputs include the central config source (`config-repository`, `config-ref`, `co
 ## ⏭️ Skip expensive work
 ```yaml
 - id: skip
-  uses: rodkisten/github/actions/skip-ci@v1
+  uses: rodkisten/github/actions/skip-ci@main
   with:
     commit-message: ${{ github.event.head_commit.message }}
 - if: steps.skip.outputs.skip != 'true'
@@ -169,7 +169,7 @@ For pull requests, resolve the head commit message explicitly: `head_commit.mess
 ## 🔐 GitHub App authentication
 ```yaml
 - id: auth
-  uses: rodkisten/github/actions/app-token@v1
+  uses: rodkisten/github/actions/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -190,4 +190,4 @@ npm run build
 - 🕳️ **No filters matched:** check the repository key and glob patterns in `config/paths.yml`.
 - 🔒 **App authentication failed:** verify installation, App ID, private key and permissions.
 - 💤 **Required check pending:** keep a stable gate job even when expensive work is skipped.
-- 📦 **Unknown `@v1`:** verify the published major tag and its bundled `dist/` assets.
+- 📦 **Unknown `@main`:** verify the published major tag and its bundled `dist/` assets.
