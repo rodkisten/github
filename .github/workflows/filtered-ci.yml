@@ -61,6 +61,9 @@ on:
       files:
         description: JSON array of changed files
         value: ${{ jobs.changes.outputs.files }}
+      matrix:
+        description: JSON array of resolved filter commands
+        value: ${{ jobs.changes.outputs.matrix }}
 jobs:
   changes:
     name: 🧬 Detect affected areas
@@ -74,6 +77,13 @@ jobs:
       config-ref: ${{ inputs.config-ref }}
       config-path: ${{ inputs.config-path }}
       base: ${{ inputs.base }}
+      working-directory: ${{ inputs.working-directory }}
+      test-command: ${{ inputs.test-command }}
+      build-command: ${{ inputs.build-command }}
+      lint-command: ${{ inputs.lint-command }}
+      run-tests: ${{ inputs.run-tests }}
+      run-build: ${{ inputs.run-build }}
+      run-lint: ${{ inputs.run-lint }}
 
   no-changes:
     name: 💤 No matching paths
@@ -98,25 +108,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        filter: ${{ fromJSON(needs.changes.outputs.any == 'true' && needs.changes.outputs.changes || '["__no_changes__"]') }}
+        include: ${{ fromJSON(needs.changes.outputs.matrix || '[]') }}
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
         uses: rodkisten/github/actions/setup-node@v1
         with:
           node-version: ${{ inputs.node-version }}
-          working-directory: ${{ inputs.working-directory }}
+          working-directory: ${{ matrix.working-directory }}
       - name: 🧪 Test and build affected area
         uses: rodkisten/github/actions/node-ci@v1
         with:
           working-directory: ${{ inputs.working-directory }}
           scope: ${{ matrix.filter }}
-          test-command: ${{ inputs.test-command }}
-          build-command: ${{ inputs.build-command }}
-          run-tests: ${{ inputs.run-tests }}
-          run-build: ${{ inputs.run-build }}
-          lint-command: ${{ inputs.lint-command }}
-          run-lint: ${{ inputs.run-lint }}
+          test-command: ${{ matrix.test-command }}
+          build-command: ${{ matrix.build-command }}
+          run-tests: ${{ matrix.run-tests }}
+          run-build: ${{ matrix.run-build }}
+          lint-command: ${{ matrix.lint-command }}
+          run-lint: ${{ matrix.run-lint }}
       - name: 📋 Filter summary
         if: always()
         uses: rodkisten/github/actions/ci-summary@v1
