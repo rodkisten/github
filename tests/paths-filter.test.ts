@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { matchChangedFiles, selectFilters } from '../src/paths-filter/rules.js';
+import { matchChangedFiles, resolveMatchedFilters, selectFilters } from '../src/paths-filter/rules.js';
 
 describe('central paths filters', () => {
   const config = 'version: 1\ndefaults:\n  filters:\n    docs: ["**/*.md"]\nrepositories:\n  demo:\n    filters:\n      app: ["src/**", "!src/generated/**"]\n';
@@ -44,5 +45,25 @@ describe('central filter dependencies', () => {
   it('keeps array shorthand backwards compatible', () => {
     const legacy = 'version: 1\nrepositories:\n  demo:\n    filters:\n      app: ["src/**"]\n';
     expect(matchChangedFiles(['src/index.ts'], selectFilters(legacy, 'demo'))).toEqual(['app']);
+  });
+});
+
+
+describe('repository path configuration', () => {
+  const source = readFileSync(new URL('../config/paths.yml', import.meta.url), 'utf8');
+
+  it.each(['userscripts-cf', 'photointel', 'shell', 'roteador'])('validates central rules for %s', repository => {
+    expect(Object.keys(selectFilters(source, repository)).length).toBeGreaterThan(0);
+  });
+
+  it('selects every configured filter for a safe full-run fallback', () => {
+    const filters = selectFilters(source, 'shell');
+    expect(resolveMatchedFilters([], filters, true)).toEqual(Object.keys(filters));
+  });
+
+  it('uses path matching for normal comparisons', () => {
+    const filters = selectFilters(source, 'shell');
+    expect(resolveMatchedFilters(['src/main.ts'], filters)).toContain('app');
+    expect(resolveMatchedFilters(['README.md'], filters)).toContain('documentation');
   });
 });
