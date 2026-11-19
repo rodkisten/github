@@ -21,7 +21,7 @@ Source: https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=pla
 - [x] Initialize shared repository.
 - [x] Define initial per-repository glob rules (provisional, not audited).
 - [x] Add app-token and skip-ci composite actions.
-- [x] Migrate the central filter workflow to the first-party TypeScript action and configurable YAML source.\n- [ ] Add schema validation and dry-run coverage for all repository filters.
+- [x] Migrate the central filter workflow to the first-party TypeScript action and configurable YAML source.\n- [ ] Add schema validation and dry-run coverage for all repository filters.\n- [x] Add reusable filtered CI matrix with one parallel job per matched filter and safe no-match handling.
 - [ ] Inventory every active repository and workflow, including required checks and deploy triggers.
 - [ ] Validate actual file paths, dry-run filters and publish a summary.
 - [ ] Migrate one repository at a time; verify checks before deleting old workflows.
@@ -56,6 +56,6 @@ jobs:
       - run: echo 'Changed filters: ${{ needs.paths.outputs.changes }}'
 ```
 
-The default configuration source is `rodkisten/github:main:config/paths.yml`. Override the source with `config-repository`, `config-ref` and `config-path`, or extend the shared configuration by adding repository-specific filters under `repositories.<key>.filters`. Defaults are inherited from `defaults.filters`, and a repository-specific filter of the same name overrides that default. `base` can override the push comparison base. Outputs: `changes` (JSON array), `files` (JSON array) and `any` (boolean string). The caller's token must be able to read the configuration repository and pull-request files.
+The default configuration source is `rodkisten/github:main:config/paths.yml`. Override the source with `config-repository`, `config-ref` and `config-path`, or extend the shared configuration by adding repository-specific filters under `repositories.<key>.filters`. Defaults are inherited from `defaults.filters`, and a repository-specific filter of the same name overrides that default. `base` can override the push comparison base. Outputs: `changes` (JSON array), `files` (JSON array) and `any` (boolean string). The caller's token must be able to read the configuration repository and pull-request files.\n\nFor a dynamic build matrix, call `filtered-ci.yml@v1`. It creates one parallel job per matched filter and passes the filter name to child commands as `ROD_CI_FILTER`. When no filters match, it emits a successful explanatory job and avoids an empty matrix.
 
 > Release sequencing: merge this change, publish a new `v1` bundle, then migrate consumer repositories. The reusable workflow references the published `@v1` action, not an unbundled TypeScript source file. Never assume an unreleased input exists in an older tag.
