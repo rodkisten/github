@@ -5,6 +5,7 @@
 - [📝 Commit recipes](#-commit-recipes)
 - [🧪 Checks](#-checks)
 - [🏷️ Versioning](#️-versioning)
+- [🧭 Major tag aliases](#-major-tag-aliases)
 - [🔐 Permissions](#-permissions)
 - [🚨 Troubleshooting](#-troubleshooting)
 
@@ -42,3 +43,9 @@ The release job needs `contents: write` to push its generated assets and tag, an
 - 🔁 **Infinite loop:** ensure release commits include `[skip ci]`; avoid alternate privileged tokens that retrigger workflows.
 - 📦 **No npm package:** intentional. Publishing targets GitHub Releases only.
 - ⚠️ **First release:** semantic-release normally starts at `1.0.0` and needs full git history.
+
+## 🧭 Major tag aliases
+
+After semantic-release creates `v1.2.3`, the toolkit-based publish hook updates `v1` to the exact same commit. Consumers can use `@v1` for compatible updates or `@v1.2.3` for fixed versions. A new major version creates `v2` without moving `v1`.
+
+> 🧪 This integration has been committed but has **not** yet been validated in a live release.
