@@ -10,6 +10,10 @@ describe('TypeScript Node CI runner', () => {
     expect(result.exitCode).toBe(0);
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
+  it('returns nonzero for a missing executable', async () => {
+    const result = await execute('nonexistent-rod-command-12345', process.cwd());
+    expect(result.exitCode).not.toBe(0);
+  });
   it('preserves failing exit codes', async () => {
     const result = await execute('node -e "process.exit(7)"', process.cwd());
     expect(result.exitCode).toBe(7);
