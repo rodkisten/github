@@ -27,11 +27,6 @@ on:
         type: string
         required: false
         default: config/paths.yml
-      action-ref:
-        description: Published action ref (override to test a reviewed release)
-        type: string
-        required: false
-        default: v1
     outputs:
       changes:
         description: JSON array of matching filter names
