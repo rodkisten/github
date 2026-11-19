@@ -84,6 +84,7 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🧪 Add Vitest coverage for PR helpers, file validation and branch validation
 - [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence
 - [x] 🧬 Support transitive dependencies between centralized path filters
+- [x] 🛟 Select every filter on a new-branch push when no comparison base exists
 - [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
