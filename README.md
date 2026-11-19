@@ -45,7 +45,7 @@ jobs:
 | `actions/commit` | Atomic multi-file commits through the Git Database API |
 | `actions/node-ci` | Run configurable Node test/build commands with summaries |
 | `workflows/node-ci.yml` | Reusable Node test/build job |
-| `workflows/paths-filter.yml` | Central per-repository path filters |
+| `workflows/paths-filter.yml` | Central per-repository path filters |\n| `workflows/filtered-ci.yml` | Dynamic parallel CI matrix from matched filters |
 | `config/paths.yml` | Shared glob rules |
 
 ## 🗺️ Architecture
@@ -82,10 +82,10 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🟦 Migrate shared Node CI runner and CI summary to TypeScript / Node 24
 - [x] 🤖 Add GitHub App `create-pr` and atomic `commit` actions
 - [x] 🧪 Add Vitest coverage for PR helpers, file validation and branch validation
-- [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence
+- [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
-- [ ] 🔔 Shared notification and auto-fix actions
+- [ ] 🔬 Validate filtered matrix workflow end-to-end on a consumer repository\n- [ ] 🔔 Shared notification and auto-fix actions
 - [ ] 🧹 Audit and migrate repositories, then remove redundant workflows
 
 💬 [Conversation and decisions](https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=plain)
