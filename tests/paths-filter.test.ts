@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { matchChangedFiles, resolveMatchedFilters, selectFilters } from '../src/paths-filter/rules.js';
+import { buildFilterMatrix, matchChangedFiles, resolveMatchedFilters, selectFilters } from '../src/paths-filter/rules.js';
 
 describe('central paths filters', () => {
   const config = 'version: 1\ndefaults:\n  filters:\n    docs: ["**/*.md"]\nrepositories:\n  demo:\n    filters:\n      app: ["src/**", "!src/generated/**"]\n';
@@ -65,5 +65,87 @@ describe('repository path configuration', () => {
     const filters = selectFilters(source, 'shell');
     expect(resolveMatchedFilters(['src/main.ts'], filters)).toContain('app');
     expect(resolveMatchedFilters(['README.md'], filters)).toContain('documentation');
+  });
+});
+
+describe('per-filter command matrix', () => {
+  const defaults = {
+    workingDirectory: '.',
+    testCommand: 'npm test',
+    buildCommand: 'npm run build',
+    lintCommand: 'npm run lint',
+    runTests: true,
+    runBuild: true,
+    runLint: false,
+  };
+
+  it('overrides fallback commands per filter and supports explicit task opt-out', () => {
+    const config = [
+      'version: 1',
+      'repositories:',
+      '  demo:',
+      '    filters:',
+      '      app:',
+      '        paths: ["src/**"]',
+      '        working-directory: apps/web',
+      '        commands:',
+      '          test: npm run test:web',
+      '          build: npm run build:web',
+      '          lint: false',
+      '      docs:',
+      '        paths: ["docs/**"]',
+      '        commands:',
+      '          test: false',
+      '          build: false',
+      '          lint: npm run docs:lint',
+    ].join('\\n');
+    const filters = selectFilters(config, 'demo');
+    expect(buildFilterMatrix(['app', 'docs'], filters, defaults)).toEqual([
+      {
+        filter: 'app',
+        'working-directory': 'apps/web',
+        'test-command': 'npm run test:web',
+        'build-command': 'npm run build:web',
+        'lint-command': 'npm run lint',
+        'run-tests': true,
+        'run-build': true,
+        'run-lint': false,
+      },
+      {
+        filter: 'docs',
+        'working-directory': '.',
+        'test-command': 'npm test',
+        'build-command': 'npm run build',
+        'lint-command': 'npm run docs:lint',
+        'run-tests': false,
+        'run-build': false,
+        'run-lint': true,
+      },
+    ]);
+  });
+
+  it('rejects invalid per-filter commands', () => {
+    const config = 'version: 1\\nrepositories:\\n  demo:\\n    filters:\\n      app:\\n        paths: ["src/**"]\\n        commands:\\n          build: 42\\n';
+    expect(() => selectFilters(config, 'demo')).toThrow('Invalid build command');
+  });
+
+  it('rejects unknown filters when constructing the matrix', () => {
+    const filters = selectFilters('version: 1\\nrepositories:\\n  demo:\\n    filters:\\n      app: ["src/**"]\\n', 'demo');
+    expect(() => buildFilterMatrix(['missing'], filters, defaults)).toThrow('Unknown filter');
+  });
+});
+
+describe('real shell command configuration', () => {
+  const source = readFileSync(new URL('../config/paths.yml', import.meta.url), 'utf8');
+  it('uses verified shell build and lint scripts without running a nonexistent npm test', () => {
+    const filters = selectFilters(source, 'shell');
+    const matrix = buildFilterMatrix(['app'], filters, {
+      workingDirectory: '.', testCommand: 'npm test', buildCommand: 'npm run build',
+      lintCommand: 'npm run lint', runTests: true, runBuild: true, runLint: false,
+    });
+    expect(matrix[0]).toMatchObject({
+      filter: 'app', 'run-tests': false, 'run-build': true, 'run-lint': true,
+      'build-command': 'npm run build', 'lint-command': 'npm run lint',
+    });
   });
 });
