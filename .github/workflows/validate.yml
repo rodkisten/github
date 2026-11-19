@@ -22,6 +22,14 @@ jobs:
         run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle
         run: rodlog exec --mode=transform -- npm run build
+      - name: 🧪 Smoke-test bundled TypeScript Node CI action
+        uses: ./actions/node-ci
+        with:
+          working-directory: .
+          test-command: node -e "process.exit(0)"
+          build-command: node -e "process.exit(0)"
+          run-tests: 'true'
+          run-build: 'true'
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
