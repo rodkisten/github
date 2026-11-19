@@ -16,6 +16,10 @@ inputs:
     description: YAML configuration path
     required: false
     default: config/paths.yml
+  base:
+    description: Optional base commit or ref for push comparisons
+    required: false
+    default: ''
   repository-key:
     description: Override repository key
     required: false
