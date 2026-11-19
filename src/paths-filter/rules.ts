@@ -59,3 +59,7 @@ export function matchChangedFiles(files: string[], filters: Filters): string[] {
   for (const name of [...matched]) visit(name);
   return [...matched];
 }
+
+export function resolveMatchedFilters(files: string[], filters: Filters, fullRun = false): string[] {
+  return fullRun ? Object.keys(filters) : matchChangedFiles(files, filters);
+}
