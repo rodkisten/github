@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   core.setOutput('branch', branch);
   core.setOutput('files', String(result.files));
   await core.summary.addHeading('📝 App-authored commit')
-    .addTable([[{ data: 'Branch', header: true }, { data: 'Commit', header: true }, { data: 'Files', header: true }], [branch, commit.data.sha, String(changes.length)]])
+    .addTable([[{ data: 'Branch', header: true }, { data: 'Commit', header: true }, { data: 'Files', header: true }], [branch, result.sha, String(result.files)]])
     .write();
 }
 main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
