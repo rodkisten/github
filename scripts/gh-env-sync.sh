@@ -142,7 +142,13 @@ else:
  print('  next:    '+repr(new))
 PY
 )
-      state=${result%%
+      state=$(printf '%s\n' "$result" | head -n 1)
+      if [[ $state == NEW || $state == SAME ]]; then
+        printf '  ⊘ %s: %s (skipped)\n' "$key" "$state"
+        ((skipped+=1)); continue
+      fi
+      printf '\033[38;5;51m↻ %s\033[0m\n%s\n' "$key" "$result"
+    fi
     args=("$type" set "$key" --repo "$repo" --body "$value")
     [[ $scope == env ]] && args+=(--env "$environment")
     if [[ $dry_run == true ]]; then
