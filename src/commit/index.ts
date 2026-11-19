@@ -1,7 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-
-type FileChange = { path: string; content: string; encoding?: 'utf-8' | 'base64' };
+import { validateChanges, type FileChange } from './validate.js';
 
 async function main(): Promise<void> {
   const token = core.getInput('token', { required: true });
@@ -12,14 +11,7 @@ async function main(): Promise<void> {
   const base = core.getInput('base') || github.context.payload.repository?.default_branch || 'main';
   const message = core.getInput('message', { required: true });
   const changes = JSON.parse(core.getInput('files', { required: true })) as FileChange[];
-  if (!Array.isArray(changes) || changes.length === 0) throw new Error('files must be a non-empty JSON array');
-  const seen = new Set<string>();
-  for (const file of changes) {
-    if (!file.path || file.path.startsWith('/') || file.path.split('/').includes('..')) throw new Error(`Unsafe file path: ${file.path}`);
-    if (seen.has(file.path)) throw new Error(`Duplicate file path: ${file.path}`);
-    seen.add(file.path);
-    if (typeof file.content !== 'string') throw new Error(`Missing content for ${file.path}`);
-  }
+  validateChanges(changes);
 
   const baseRef = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${base}` });
   let parentSha: string;
