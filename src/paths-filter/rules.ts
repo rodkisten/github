@@ -17,6 +17,14 @@ export interface FilterOptions {
 type FilterRule = string[] | FilterOptions;
 type Filters = Record<string, FilterRule>;
 type Config = { version: number; defaults?: { filters?: Filters }; repositories?: Record<string, { filters?: Filters }> };
+const configUrl = (repository: string) => `https://github.com/rodkisten/github/blob/main/config/paths.yml#L1`;
+function patternsFor(name: string, rule: FilterRule, repository: string): string[] {
+  const paths = Array.isArray(rule) ? rule : rule?.paths;
+  if (!Array.isArray(paths) || !paths.length || paths.some(p => typeof p !== 'string' || !p.trim())) {
+    throw new Error(`Invalid paths for filter "${name}" in repository "${repository}". Expected a nonempty glob array or { paths: [...] }. Configure the repository entry at ${configUrl(repository)} (repositories → ${repository} → filters → ${name}).`);
+  }
+  return paths;
+}
 
 function normalize(rule: FilterRule, name: string): { paths: string[]; dependencies: string[]; commands: FilterCommands; workingDirectory?: string } {
   const paths = Array.isArray(rule) ? rule : rule?.paths;
