@@ -1,7 +1,7 @@
 export type FileChange = { path: string; content: string; encoding?: 'utf-8' | 'base64' };
 
 export function validateBranchName(branch: string): void {
-  const forbidden = /[\\s~^:?*\\[\\]\\\\]/;
+  const forbidden = [...branch].some(character => character.charCodeAt(0) <= 32 || (' ~^:?*[]' + String.fromCharCode(92)).includes(character));
   const invalid = !branch || branch.startsWith('/') || branch.endsWith('/') || branch.includes('//') ||
     branch.includes('..') || branch.includes('@{') || forbidden ||
     branch.split('/').some(segment => segment.startsWith('.') || segment.endsWith('.lock'));
