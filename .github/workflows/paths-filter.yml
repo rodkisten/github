@@ -87,7 +87,7 @@ jobs:
     steps:
       - name: 🧬 Evaluate filters using Node 24
         id: paths
-        uses: rodkisten/github/actions/paths-filter@v1
+        uses: rodkisten/github/actions/paths-filter@main
         with:
           token: ${{ github.token }}
           repository-key: ${{ inputs.repository-key }}
