@@ -44,21 +44,18 @@ export function matchChangedFiles(files: string[], filters: Filters): string[] {
     }));
   }).map(([name]) => name));
 
-  const visit = (name: string, visiting = new Set<string>()): void => {
-    if (visiting.has(name)) throw new Error(\`Circular filter dependency detected at "\${name}"\`);
+  const visited = new Set<string>();
+  const visit = (name: string, stack: string[] = []): void => {
+    if (stack.includes(name)) throw new Error(\`Circular filter dependency detected: \${[...stack, name].join(' → ')}\`);
+    if (visited.has(name)) return;
     const rule = filters[name];
-    if (!rule || matched.has(name) && visiting.size === 0) {
-      if (!rule) throw new Error(\`Unknown filter "\${name}"\`);
-      return;
-    }
-    const next = new Set(visiting).add(name);
+    if (!rule) throw new Error(\`Unknown filter "\${name}"\`);
+    const nextStack = [...stack, name];
     for (const dependency of normalize(rule, name).dependencies) {
-      if (next.has(dependency)) throw new Error(\`Circular filter dependency detected: \${[...next, dependency].join(' → ')}\`);
-      if (!matched.has(dependency)) {
-        matched.add(dependency);
-        visit(dependency, next);
-      }
+      matched.add(dependency);
+      visit(dependency, nextStack);
     }
+    visited.add(name);
   };
   for (const name of [...matched]) visit(name);
   return [...matched];
