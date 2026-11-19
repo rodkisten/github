@@ -52,8 +52,11 @@ if [[ -t 0 ]] && command -v fzf >/dev/null; then
   pick_one() { printf '%s\n' "$@" | fzf --reverse --height=~10 --border=rounded --color='border:magenta,prompt:cyan'; }
   pick_many() { printf '%s\n' "$@" | fzf --multi --reverse --height=~70% --border=rounded --bind='ctrl-a:select-all' --header='TAB toggle · Ctrl-A select all · Enter confirm' --color='border:magenta,prompt:cyan,pointer:magenta,header:yellow'; }
   [[ -n $type ]] || type=$(pick_one secret variable) || exit 0
+  studio_event 99 TYPE "$type"
   [[ -n $scope ]] || scope=$(pick_one repo env) || exit 0
+  studio_event 99 SCOPE "$scope"
   if [[ $scope == env && -z $environment ]]; then read -r -p '🌐 Environment: ' environment; fi
+  [[ $scope != env ]] || studio_event 99 ENV "$environment"
 else
   type=${type:-secret}; scope=${scope:-repo}
 fi
@@ -122,7 +125,16 @@ PY
   if [[ $cache_fresh == false ]]; then
     printf '\\033[38;5;51m◐ Loading repositories from GitHub...\\033[0m\\n' >&2
     cache_tmp=$(mktemp "$cache_dir/.repos.XXXXXX")
-    if gh repo list "$owner" --limit 10000 --json nameWithOwner,pushedAt,isArchived,isFork > "$cache_tmp.json"; then
+    gh repo list "$owner" --limit 10000 --json nameWithOwner,pushedAt,isArchived,isFork > "$cache_tmp.json" 2>"$cache_tmp.error" &
+    fetch_pid=$!; frame=0; frames=('◐' '◓' '◑' '◒')
+    if [[ -t 2 ]]; then
+      while kill -0 "$fetch_pid" 2>/dev/null; do
+        printf '\r\033[K\033[48;5;57m\033[38;5;231m %s FETCH \033[0m %s · repositories' "${frames[frame%4]}" "$owner" >&2
+        frame=$((frame+1)); sleep .12
+      done
+      printf '\r\033[K' >&2
+    fi
+    if wait "$fetch_pid"; then
       python3 - "$cache_tmp.json" "$cache_tmp" <<'PY'
 import json,sys,pathlib
 items=json.load(open(sys.argv[1]))
@@ -131,17 +143,19 @@ pathlib.Path(sys.argv[2]).write_text(''.join(f"{r['nameWithOwner']}\\n" for r in
 PY
       mv -f "$cache_tmp" "$cache_file"
       chmod 600 "$cache_file"
-      rm -f "$cache_tmp.json"
-      printf '\\033[38;5;118m✓ Repository cache refreshed\\033[0m\\n' >&2
+      rm -f "$cache_tmp.json" "$cache_tmp.error"
+      studio_event 34 CACHE "Refreshed repositories for $owner"
     else
-      rm -f "$cache_tmp" "$cache_tmp.json"
+      head -3 "$cache_tmp.error" >&2
+      rm -f "$cache_tmp" "$cache_tmp.json" "$cache_tmp.error"
       if [[ ! -s $cache_file ]]; then echo 'Cannot load repositories and no cache exists' >&2; exit 1; fi
       echo '⚠ GitHub unavailable; using stale repository cache' >&2
     fi
   else
-    printf '\\033[38;5;118m✓ Repository cache hit\\033[0m\\n' >&2
+    studio_event 34 CACHE "Using cached repository list"
   fi
   mapfile -t repos < "$cache_file"
+  studio_event 45 FOUND "${#repos[@]} repositories available"
   if ((limit > 0)); then repos=("${repos[@]:0:limit}"); fi
 fi
 (("${#repos[@]}")) || { echo 'No repositories found' >&2; exit 1; }
@@ -149,7 +163,8 @@ if declare -F pick_many >/dev/null; then
   selected=$(pick_many "${repos[@]}") || exit 0
   [[ -n $selected ]] || exit 0
   mapfile -t repos <<< "$selected"
-  studio_event 45 REPOS "${#repos[@]} selected: ${repos[*]}"
+  studio_event 45 REPOS "${#repos[@]} selected"
+  for chosen_repo in "${repos[@]}"; do studio_event 45 SELECT "$chosen_repo"; done
 fi
 mapfile -d '' -t entries < "$tmp"
 keys=(); for ((i=0;i<${#entries[@]};i+=2)); do keys+=("${entries[i]}"); done
@@ -157,7 +172,8 @@ if declare -F pick_many >/dev/null; then
   selected=$(pick_many "${keys[@]}") || exit 0
   [[ -n $selected ]] || exit 0
   mapfile -t keys <<< "$selected"
-  studio_event 141 KEYS "${#keys[@]} selected: ${keys[*]}"
+  studio_event 141 KEYS "${#keys[@]} selected"
+  for chosen_key in "${keys[@]}"; do studio_event 141 SELECT "$chosen_key"; done
 fi
 printf '\033[38;5;213m✦ GH ENV STUDIO ✦\033[0m\n'
 studio_event 99 TARGET "$type / $scope ${environment:-}"
