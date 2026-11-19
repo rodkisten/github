@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   core.setOutput('created', String(result.created));
   core.setOutput('updated', String(result.updated));
   await core.summary.addHeading('🤖 Pull request ready')
-    .addTable([[{ data: 'PR', header: true }, { data: 'Base', header: true }, { data: 'Result', header: true }], [`[#${pullNumber}](${pullUrl})`, base, result.created ? 'Created' : 'Updated']])
+    .addTable([[{ data: 'PR', header: true }, { data: 'Base', header: true }, { data: 'Result', header: true }], [`[#${result.number}](${result.url})`, base, result.created ? 'Created' : 'Updated']])
     .write();
 }
 main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
