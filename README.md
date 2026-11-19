@@ -71,3 +71,28 @@ python -m unittest discover -s tests -v
 - [ ] 🧹 Audit and migrate repositories, then remove redundant workflows
 
 💬 [Conversation and decisions](https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=plain)
+
+## 🟦 TypeScript / Node 24 migration
+
+The shared path-filter implementation now lives in `src/paths-filter/` and uses `@actions/core`, `@actions/github`, `yaml` and `picomatch`. The new JavaScript action is **not production-ready until `dist/paths-filter.js` is bundled and committed**.
+
+### 🧪 Developer commands
+
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+### 🧬 Action usage (after bundling and release)
+
+```yaml
+- uses: rodkisten/github/actions/paths-filter@v1
+  id: changes
+  with:
+    token: ${{ github.token }}
+    config-ref: v1
+```
+
+Grant `contents: read` and `pull-requests: read` to the calling job. The action intentionally fails closed when GitHub's comparison results might be truncated. The existing Python dispatcher is legacy and will be replaced after the TypeScript action passes integration tests.
