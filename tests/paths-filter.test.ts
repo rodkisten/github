@@ -103,7 +103,7 @@ describe('per-filter command matrix', () => {
       '          test: false',
       '          build: false',
       '          lint: "npm run docs:lint"',
-    ].join('\\n');
+    ].join('\n');
     const filters = selectFilters(config, 'demo');
     expect(buildFilterMatrix(['app', 'docs'], filters, defaults)).toEqual([
       {
@@ -130,12 +130,12 @@ describe('per-filter command matrix', () => {
   });
 
   it('rejects invalid per-filter commands', () => {
-    const config = 'version: 1\\nrepositories:\\n  demo:\\n    filters:\\n      app:\\n        paths: ["src/**"]\\n        commands:\\n          build: 42\\n';
+    const config = 'version: 1\nrepositories:\n  demo:\n    filters:\n      app:\n        paths: ["src/**"]\n        commands:\n          build: 42\n';
     expect(() => selectFilters(config, 'demo')).toThrow('Invalid build command');
   });
 
   it('rejects unknown filters when constructing the matrix', () => {
-    const filters = selectFilters('version: 1\\nrepositories:\\n  demo:\\n    filters:\\n      app: ["src/**"]\\n', 'demo');
+    const filters = selectFilters('version: 1\nrepositories:\n  demo:\n    filters:\n      app: ["src/**"]\n', 'demo');
     expect(() => buildFilterMatrix(['missing'], filters, defaults)).toThrow('Unknown filter');
   });
 });
