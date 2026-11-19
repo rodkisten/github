@@ -18,7 +18,7 @@
     "@types/node": "^24.0.0",
     "@types/picomatch": "^4.0.2",
     "tsdown": "^0.15.0",
-    "typescript": "^6.0.0",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.0",
     "semantic-release": "^25.0.0",
     "@semantic-release/commit-analyzer": "^13.0.0",
