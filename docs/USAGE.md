@@ -1,7 +1,7 @@
 # 📚 Recipes for shared CI
 
 ## 🧭 Table of contents
-- [🚀 Node CI](#-node-ci)
+- [🤖 Create or update a PR](#-create-or-update-a-pr)\n- [📝 Commit multiple files](#-commit-multiple-files)\n- [🚀 Node CI](#-node-ci)
 - [🧬 Path filtering](#-path-filtering)
 - [⏭️ Skip expensive work](#️-skip-expensive-work)
 - [🔐 GitHub App authentication](#-github-app-authentication)
@@ -9,6 +9,61 @@
 - [🚨 Troubleshooting](#-troubleshooting)
 
 > 📦 Examples target the moving `v1` tag. Verify the published release and bundle before adopting new inputs in production.
+
+## 🤖 Create or update a PR
+
+Use the App token from `actions/app-token`. The action searches for an open PR with the same head and base, updates it by default, and appends the originating conversation URL when supplied.
+
+```yaml
+- name: 🔐 Authenticate Rod App
+  id: app
+  uses: rodkisten/github/actions/app-token@v1
+  with:
+    app-id: ${{ secrets.BOT_APP_ID }}
+    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+    permission-contents: read
+    permission-pull-requests: write
+- name: 🤖 Create or update PR
+  id: pr
+  uses: rodkisten/github/actions/create-pr@v1
+  with:
+    token: ${{ steps.app.outputs.token }}
+    head: automation/update-lockfile
+    base: main
+    title: 'chore: update lockfile'
+    body: 'Automated dependency lockfile update.'
+    conversation-url: ${{ vars.CHATGPT_CONVERSATION_URL }}
+    labels: dependencies, automated
+    update-existing: 'true'
+```
+
+Outputs: `number`, `url`, `created`, `updated`. Grant only the permissions needed by the operation. For cross-repository PRs, grant the App access to both repositories and use `owner:branch` for `head`.
+
+## 📝 Commit multiple files
+
+The commit action creates one atomic Git commit containing all supplied file changes. It creates the target branch from `base` when it does not exist. Existing branches are updated with a non-force ref update, so concurrent or non-fast-forward changes fail safely.
+
+```yaml
+- name: 🔐 Authenticate Rod App
+  id: app
+  uses: rodkisten/github/actions/app-token@v1
+  with:
+    app-id: ${{ secrets.BOT_APP_ID }}
+    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+    permission-contents: write
+- name: 📝 Commit generated files
+  id: commit
+  uses: rodkisten/github/actions/commit@v1
+  with:
+    token: ${{ steps.app.outputs.token }}
+    branch: automation/generated-docs
+    base: main
+    message: 'docs: refresh generated documentation [skip ci]'
+    files: |
+      [{"path":"docs/generated.md","content":"# Generated\\n"}]
+```
+
+The `files` input is a JSON array with `path`, `content`, and optional `encoding: base64`. Outputs: `sha`, `branch`, `files`. Never pass untrusted user-controlled file paths or grant this token to untrusted pull-request code.
 
 ## 🚀 Node CI
 ```yaml
