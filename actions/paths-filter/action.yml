@@ -30,6 +30,8 @@ outputs:
     description: Whether any filter matched
   files:
     description: JSON array of changed paths
+  full-run:
+    description: Whether all filters were selected as a safe initial-push fallback
 runs:
   using: node24
   main: ../../dist/paths-filter.js
