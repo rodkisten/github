@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsdown';
 export default defineConfig({
-  entry: { 'paths-filter': 'src/paths-filter/index.ts', 'node-ci': 'src/node-ci/index.ts', 'ci-summary': 'src/ci-summary/index.ts' },
+  entry: { 'paths-filter': 'src/paths-filter/index.ts', 'node-ci': 'src/node-ci/index.ts', 'ci-summary': 'src/ci-summary/index.ts', 'create-pr': 'src/create-pr/index.ts', 'commit': 'src/commit/index.ts' },
   format: 'esm',
   outExtensions: () => ({ js: '.js' }),
   platform: 'node',
