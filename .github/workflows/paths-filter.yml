@@ -27,6 +27,34 @@ on:
         type: string
         required: false
         default: config/paths.yml
+      working-directory:
+        type: string
+        required: false
+        default: '.'
+      test-command:
+        type: string
+        required: false
+        default: npm test
+      build-command:
+        type: string
+        required: false
+        default: npm run build
+      lint-command:
+        type: string
+        required: false
+        default: npm run lint
+      run-tests:
+        type: boolean
+        required: false
+        default: true
+      run-build:
+        type: boolean
+        required: false
+        default: true
+      run-lint:
+        type: boolean
+        required: false
+        default: false
     outputs:
       changes:
         description: JSON array of matching filter names
@@ -40,6 +68,9 @@ on:
       full-run:
         description: Whether all filters were selected as a safe initial-push fallback
         value: ${{ jobs.filter.outputs.full-run }}
+      matrix:
+        description: JSON array of resolved filter command configurations
+        value: ${{ jobs.filter.outputs.matrix }}
 jobs:
   filter:
     name: 🟦 Evaluate changed paths
@@ -52,6 +83,7 @@ jobs:
       any: ${{ steps.paths.outputs.any }}
       files: ${{ steps.paths.outputs.files }}
       full-run: ${{ steps.paths.outputs.full-run }}
+      matrix: ${{ steps.paths.outputs.matrix }}
     steps:
       - name: 🧬 Evaluate filters using Node 24
         id: paths
@@ -63,3 +95,10 @@ jobs:
           config-ref: ${{ inputs.config-ref }}
           config-path: ${{ inputs.config-path }}
           base: ${{ inputs.base }}
+          working-directory: ${{ inputs.working-directory }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+          lint-command: ${{ inputs.lint-command }}
+          run-tests: ${{ inputs.run-tests }}
+          run-build: ${{ inputs.run-build }}
+          run-lint: ${{ inputs.run-lint }}
