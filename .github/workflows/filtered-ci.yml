@@ -67,7 +67,7 @@ on:
 jobs:
   changes:
     name: 🧬 Detect affected areas
-    uses: rodkisten/github/.github/workflows/paths-filter.yml@v1
+    uses: rodkisten/github/.github/workflows/paths-filter.yml@main
     permissions:
       contents: read
       pull-requests: read
@@ -96,9 +96,9 @@ jobs:
           FILES: ${{ needs.changes.outputs.files }}
         run: |
           echo 'No configured filter matched the changed files.' >> "$GITHUB_STEP_SUMMARY"
-          echo "```json" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' '```json' >> "$GITHUB_STEP_SUMMARY"
           echo "$FILES" >> "$GITHUB_STEP_SUMMARY"
-          echo "```" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' '```' >> "$GITHUB_STEP_SUMMARY"
 
   filtered:
     name: 🏗️ ${{ matrix.filter }}
@@ -112,12 +112,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
-        uses: rodkisten/github/actions/setup-node@v1
+        uses: rodkisten/github/actions/setup-node@main
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ matrix.working-directory }}
       - name: 🧪 Test and build affected area
-        uses: rodkisten/github/actions/node-ci@v1
+        uses: rodkisten/github/actions/node-ci@main
         with:
           working-directory: ${{ matrix.working-directory }}
           scope: ${{ matrix.filter }}
@@ -129,7 +129,7 @@ jobs:
           run-lint: ${{ matrix.run-lint }}
       - name: 📋 Filter summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@v1
+        uses: rodkisten/github/actions/ci-summary@main
         with:
           title: '🧬 Filtered CI · ${{ matrix.filter }}'
           status: ${{ job.status }}
