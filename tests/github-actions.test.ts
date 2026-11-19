@@ -4,11 +4,11 @@ import { validateBranchName, validateChanges } from '../src/commit/validate.js';
 
 describe('create-pr helpers', () => {
   it('parses comma and newline separated labels/reviewers', () => {
-    expect(parseList('bug, enhancement\\nteam-reviewer\\r\\n')).toEqual(['bug', 'enhancement', 'team-reviewer']);
+    expect(parseList('bug, enhancement\nteam-reviewer\r\n')).toEqual(['bug', 'enhancement', 'team-reviewer']);
   });
   it('appends the originating conversation with real Markdown line breaks', () => {
     const body = appendConversationUrl('Automated update', 'https://chatgpt.com/share/example');
-    expect(body).toContain('Automated update\\n\\n## 💬 Conversation\\nhttps://chatgpt.com/share/example');
+    expect(body).toContain('Automated update\n\n## 💬 Conversation\nhttps://chatgpt.com/share/example');
     expect(appendConversationUrl(body, 'https://chatgpt.com/share/example')).toBe(body);
   });
   it('does not append an empty or duplicate URL', () => {
@@ -40,7 +40,7 @@ describe('commit branch validation', () => {
   it.each(['main', 'automation/update-lockfile', 'release/v1.2.3'])('accepts valid branch %s', branch => {
     expect(() => validateBranchName(branch)).not.toThrow();
   });
-  it.each(['', '/main', 'main/', 'feature//branch', '../main', 'branch name', 'main.lock', 'x\\\\y'])('rejects invalid branch %s', branch => {
+  it.each(['', '/main', 'main/', 'feature//branch', '../main', 'branch name', 'main.lock', 'x\\y'])('rejects invalid branch %s', branch => {
     expect(() => validateBranchName(branch)).toThrow('Invalid Git branch name');
   });
 });
