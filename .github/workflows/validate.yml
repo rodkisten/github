@@ -14,12 +14,14 @@ jobs:
           node-version: '24'
       - name: 📦 Install
         run: npm install --no-audit --no-fund
+      - name: 🌈 Install rodlog
+        uses: ./actions/setup-rodlog
       - name: 🔎 Typecheck
-        run: npm run typecheck
+        run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
       - name: 🧪 Vitest
-        run: npm test
+        run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle
-        run: npm run build
+        run: rodlog exec --mode=transform -- npm run build
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'

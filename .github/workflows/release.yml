@@ -27,12 +27,14 @@ jobs:
           node-version: '24'
       - name: 📦 Install dependencies
         run: npm install --no-audit --no-fund
+      - name: 🌈 Install rodlog
+        uses: ./actions/setup-rodlog
       - name: 🔎 Typecheck
-        run: npm run typecheck
+        run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
       - name: 🧪 Tests
-        run: npm test
+        run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle JavaScript actions
-        run: npm run build
+        run: rodlog exec --mode=transform -- npm run build
       - name: 📋 Verify action bundle
         run: test -s dist/paths-filter.js
       - name: 🏷️ Analyze commits, version & publish release

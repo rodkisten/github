@@ -1,0 +1,54 @@
+name: 🌈 Setup rodlog
+description: Install the published rodlog binary with SHA-256 verification
+inputs:
+  release-base:
+    description: Trusted HTTPS mirror with rodlog binaries and checksums
+    required: false
+    default: https://rodkisten.github.io/rodlog/releases
+outputs:
+  binary:
+    description: Absolute path to verified rodlog binary
+    value: ${{ steps.install.outputs.binary }}
+runs:
+  using: composite
+  steps:
+    - name: 🌈 Install and verify rodlog
+      id: install
+      shell: bash
+      env:
+        RODLOG_RELEASE_BASE: ${{ inputs.release-base }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in
+          Linux) os=linux ;;
+          macOS) os=darwin ;;
+          *) echo "::error::Unsupported OS: $RUNNER_OS"; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64) arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "::error::Unsupported architecture: $RUNNER_ARCH"; exit 1 ;;
+        esac
+        file="rodlog_${os}_${arch}"
+        dir="$(mktemp -d)"
+        trap 'rm -rf "$dir"' EXIT
+        curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+          "${RODLOG_RELEASE_BASE%/}/checksums.txt" -o "$dir/checksums.txt"
+        curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+          "${RODLOG_RELEASE_BASE%/}/$file" -o "$dir/$file"
+        (
+          cd "$dir"
+          grep -E "^[a-fA-F0-9]{64}  ${file}$" checksums.txt > selected.sha256
+          test -s selected.sha256
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum --check selected.sha256
+          else
+            shasum -a 256 --check selected.sha256
+          fi
+        )
+        install -m 0755 "$dir/$file" "$RUNNER_TEMP/rodlog"
+        echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+        echo "binary=$RUNNER_TEMP/rodlog" >> "$GITHUB_OUTPUT"
+        "$RUNNER_TEMP/rodlog" version
+        echo "### 🌈 rodlog ready" >> "$GITHUB_STEP_SUMMARY"
+        echo "Verified \`$file\` against the published SHA-256 checksum." >> "$GITHUB_STEP_SUMMARY"
