@@ -85,12 +85,12 @@ jobs:
   filtered:
     name: 🏗️ ${{ matrix.filter }}
     needs: changes
-    if: needs.changes.outputs.any == 'true'
+    if: needs.changes.outputs.any == 'true' && matrix.filter != '__no_changes__'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        filter: ${{ fromJSON(needs.changes.outputs.changes) }}
+        filter: ${{ fromJSON(needs.changes.outputs.any == 'true' && needs.changes.outputs.changes || '["__no_changes__"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
