@@ -19,26 +19,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: 🔐 Validate Rod GitHub App credentials
-        env:
-          BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
-          BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
-        run: |
-          if [ -z "$BOT_APP_ID" ]; then
-            echo "::error::BOT_APP_ID is missing. Set Actions secret BOT_APP_ID and ensure it is available to this workflow."
-            exit 1
-          fi
-          if [ -z "$BOT_PRIVATE_KEY" ]; then
-            echo "::error::BOT_PRIVATE_KEY is missing. Set repository secret BOT_PRIVATE_KEY."
-            exit 1
-          fi
-      - name: 🤖 Authenticate Rod GitHub App
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.BOT_APP_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          permission-contents: write
       - name: 📥 Checkout source branch
         uses: actions/checkout@v4
         with:
@@ -72,6 +52,28 @@ jobs:
           else
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           fi
+      - name: 🔐 Validate Rod GitHub App credentials
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+          BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
+        run: |
+          if [ -z "$BOT_APP_ID" ]; then
+            echo "::error::BOT_APP_ID is missing. Set Actions secret BOT_APP_ID and ensure it is available to this workflow."
+            exit 1
+          fi
+          if [ -z "$BOT_PRIVATE_KEY" ]; then
+            echo "::error::BOT_PRIVATE_KEY is missing. Set repository secret BOT_PRIVATE_KEY."
+            exit 1
+          fi
+      - name: 🤖 Authenticate Rod GitHub App
+        if: steps.changed.outputs.changed == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
       - name: 📝 Update lockfile via GitHub API
         if: steps.changed.outputs.changed == 'true'
         uses: actions/github-script@v8
