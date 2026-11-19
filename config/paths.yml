@@ -20,10 +20,13 @@ repositories:
         - '**/*.test.ts'
         - '**/*.spec.ts'
       ci:
-        - '.github/workflows/**'
-        - '.github/actions/**'
-        - 'package.json'
-        - 'package-lock.json'
+        paths:
+          - '.github/workflows/**'
+          - '.github/actions/**'
+        commands:
+          test: false
+          build: npm run build
+          lint: npm run lint
         - 'tsconfig*.json'
         - 'vitest.config.*'
 
@@ -90,18 +93,33 @@ repositories:
   shell:
     filters:
       app:
-        - 'src/**'
-        - 'package.json'
-        - 'package-lock.json'
-        - 'tsconfig*.json'
-        - 'vite.config.*'
+        paths:
+          - 'src/**'
+          - 'package.json'
+          - 'package-lock.json'
+          - 'tsconfig*.json'
+          - 'vite.config.*'
+        commands:
+          test: false
+          build: npm run build
+          lint: npm run lint
       wasm:
-        - 'wasm/**'
-        - 'src/wasm/**'
-        - 'scripts/wasm/**'
+        paths:
+          - 'wasm/**'
+          - 'src/wasm/**'
+          - 'scripts/wasm/**'
+        commands:
+          test: false
+          build: npm run build
+          lint: false
       assets:
-        - 'public/**'
-        - 'assets/**'
+        paths:
+          - 'public/**'
+          - 'assets/**'
+        commands:
+          test: false
+          build: npm run build
+          lint: false
       ci:
         - '.github/workflows/**'
         - '.github/actions/**'
