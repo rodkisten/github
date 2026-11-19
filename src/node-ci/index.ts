@@ -35,4 +35,4 @@ async function main(): Promise<void> {
       ...results.map(r => [r.name, String(r.exitCode), String(r.durationMs)]),
     ]).write();
 }
-if (process.env.NODE_ENV !== 'test') main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
+main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
