@@ -1,0 +1,48 @@
+name: 🤖 Create or update pull request
+description: Create or update a PR using a scoped GitHub App installation token
+inputs:
+  token:
+    description: GitHub App installation token with pull-requests write permission
+    required: true
+  head:
+    description: Head branch (owner:branch for cross-repository PRs)
+    required: true
+  base:
+    description: Base branch (defaults to repository default branch)
+    required: false
+  title:
+    description: Pull request title
+    required: true
+  body:
+    description: Pull request Markdown body
+    required: false
+    default: ''
+  conversation-url:
+    description: Originating ChatGPT conversation URL, appended if absent
+    required: false
+  labels:
+    description: Comma or newline-separated labels
+    required: false
+  reviewers:
+    description: Comma or newline-separated GitHub usernames
+    required: false
+  draft:
+    description: Create as draft
+    required: false
+    default: 'false'
+  update-existing:
+    description: Update an existing open PR for the same head and base
+    required: false
+    default: 'true'
+outputs:
+  number:
+    description: Pull request number
+  url:
+    description: Pull request URL
+  created:
+    description: Whether a new PR was created
+  updated:
+    description: Whether an existing PR was updated
+runs:
+  using: node24
+  main: ../../dist/create-pr.js

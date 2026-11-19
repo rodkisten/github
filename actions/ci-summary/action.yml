@@ -13,18 +13,5 @@ inputs:
     required: false
     default: ''
 runs:
-  using: composite
-  steps:
-    - name: Publish summary
-      shell: bash
-      env:
-        TITLE: ${{ inputs.title }}
-        STATUS: ${{ inputs.status }}
-        DETAILS: ${{ inputs.details }}
-      run: |
-        {
-          printf '## %s\n\n' "$TITLE"
-          printf '| Repository | Workflow | Status |\n|---|---|---|\n'
-          printf '| %s | %s | %s |\n\n' "$GITHUB_REPOSITORY" "$GITHUB_WORKFLOW" "$STATUS"
-          printf '%s\n' "$DETAILS"
-        } >> "$GITHUB_STEP_SUMMARY"
+  using: node24
+  main: ../../dist/ci-summary.js

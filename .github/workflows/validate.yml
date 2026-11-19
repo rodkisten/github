@@ -22,6 +22,36 @@ jobs:
         run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle
         run: rodlog exec --mode=transform -- npm run build
+      - name: 🧪 Smoke-test bundled TypeScript Node CI action
+        uses: ./actions/node-ci
+        with:
+          working-directory: .
+          test-command: node -e "process.exit(0)"
+          build-command: node -e "process.exit(0)"
+          run-tests: 'true'
+          run-build: 'true'
+      - name: 🧯 Smoke-test expected command failure
+        id: expected-failure
+        continue-on-error: true
+        uses: ./actions/node-ci
+        with:
+          test-command: node -e "process.exit(7)"
+          run-build: 'false'
+      - name: 🔍 Assert failure was propagated
+        env:
+          OUTCOME: ${{ steps.expected-failure.outcome }}
+        run: |
+          if [ "$OUTCOME" != failure ]; then
+            echo "::error::Expected TypeScript Node CI action to fail, got $OUTCOME"
+            exit 1
+          fi
+          echo '🧯 Expected failure correctly propagated.' >> "$GITHUB_STEP_SUMMARY"
+      - name: 📝 Smoke-test TypeScript CI summary
+        uses: ./actions/ci-summary
+        with:
+          title: '🧪 TypeScript Action integration'
+          status: success
+          details: 'Bundled Node 24 summary action executed successfully.'
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
@@ -32,7 +62,9 @@ jobs:
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          if (!existsSync('dist/paths-filter.js') || !statSync('dist/paths-filter.js').size) {
-            throw new Error('Missing bundled paths-filter action');
+          for (const name of ['paths-filter', 'node-ci', 'ci-summary', 'create-pr', 'commit']) {
+            if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
+              throw new Error(`Missing bundled ${name} action`);
+            }
           }
           NODE
