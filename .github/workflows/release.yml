@@ -17,6 +17,19 @@ jobs:
     name: 🧪 Build, verify & publish
     runs-on: ubuntu-latest
     steps:
+      - name: 🔐 Validate Rod GitHub App credentials
+        env:
+          BOT_APP_ID: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
+          BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
+        run: |
+          if [ -z "$BOT_APP_ID" ]; then
+            echo "::error::BOT_APP_ID is missing. Set repository variable BOT_APP_ID or secret BOT_APP_ID."
+            exit 1
+          fi
+          if [ -z "$BOT_PRIVATE_KEY" ]; then
+            echo "::error::BOT_PRIVATE_KEY is missing. Set repository secret BOT_PRIVATE_KEY."
+            exit 1
+          fi
       - name: 🤖 Authenticate Rod GitHub App
         id: app-token
         uses: actions/create-github-app-token@v2
