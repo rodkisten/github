@@ -103,7 +103,7 @@ jobs:
   filtered:
     name: 🏗️ ${{ matrix.filter }}
     needs: changes
-    if: needs.changes.outputs.any == 'true' && matrix.filter != '__no_changes__'
+    if: needs.changes.outputs.any == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
