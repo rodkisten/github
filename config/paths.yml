@@ -19,8 +19,18 @@ repositories:
     filters:
       manage:
         - 'apps/manage/**'
+      api-contracts:
+        - 'packages/contracts/**'
       api:
-        - 'apps/api/**'
+        paths:
+          - 'apps/api/**'
+        depends-on:
+          - api-contracts
+      manage:
+        paths:
+          - 'apps/manage/**'
+        depends-on:
+          - api-contracts
       gpu:
         - 'gpu/**'
         - 'modal/**'
