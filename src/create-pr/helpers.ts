@@ -1,5 +1,5 @@
 export function parseList(value: string): string[] {
-  return value.split(/[\\r\\n,]/).map(item => item.trim()).filter(Boolean);
+  return value.split(/[\r\n,]/).map(item => item.trim()).filter(Boolean);
 }
 
 export function appendConversationUrl(body: string, url: string): string {
