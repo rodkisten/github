@@ -55,3 +55,12 @@ After semantic-release creates `v1.2.3`, the toolkit-based publish hook updates 
 Release writes use `steps.app-token.outputs.token`, never `secrets.GITHUB_TOKEN`. Git checkout uses that token, and both Git author and committer use the App slug with `[bot]`. The lockfile repair workflow also uses the App token and API author/committer metadata. GitHub Actions itself remains the executor, but **the GitHub App is the committing identity**.
 
 ⚠️ A GitHub App token can trigger downstream workflows. Keep bot commits marked `[skip ci]` and guard release execution independently. Check repository rulesets and the App's installation permissions before a production release.
+
+### 🔑 Required repository settings
+
+1. In **Settings → Secrets and variables → Actions → Variables**, create `BOT_APP_ID` with the numeric GitHub App ID (alternatively, set it as an Actions secret).
+2. In **Settings → Secrets and variables → Actions → Secrets**, create `BOT_PRIVATE_KEY` containing the complete PEM private key for that App.
+3. Install the App on `rodkisten/github`, granting **Contents: read/write**, **Issues: read/write** and **Pull requests: read/write** for release publishing.
+4. Re-run the failed lockfile workflow and confirm its App token is created before merging this PR.
+
+The workflows check presence of credentials without printing their values. Missing credentials are a configuration error; they must not silently fall back to `GITHUB_TOKEN`, because that would violate the bot-only commit policy.
