@@ -94,15 +94,15 @@ describe('per-filter command matrix', () => {
       '        paths: ["src/**"]',
       '        working-directory: apps/web',
       '        commands:',
-      '          test: 'npm run test:web'',
-      '          build: 'npm run build:web'',
+      '          test: "npm run test:web"',
+      '          build: "npm run build:web"',
       '          lint: false',
       '      docs:',
       '        paths: ["docs/**"]',
       '        commands:',
       '          test: false',
       '          build: false',
-      '          lint: 'npm run docs:lint'',
+      '          lint: "npm run docs:lint"',
     ].join('\\n');
     const filters = selectFilters(config, 'demo');
     expect(buildFilterMatrix(['app', 'docs'], filters, defaults)).toEqual([
