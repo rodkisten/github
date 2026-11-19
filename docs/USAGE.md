@@ -2,7 +2,7 @@
 
 ## 🧭 Table of contents
 - [🤖 Create or update a PR](#-create-or-update-a-pr)\n- [📝 Commit multiple files](#-commit-multiple-files)\n- [🚀 Node CI](#-node-ci)
-- [🧬 Path filtering](#-path-filtering)
+- [🧬 Path filtering](#-path-filtering)\n- [🏗️ Filtered CI matrix](#️-filtered-ci-matrix)
 - [⏭️ Skip expensive work](#️-skip-expensive-work)
 - [🔐 GitHub App authentication](#-github-app-authentication)
 - [🧪 Local validation](#-local-validation)
@@ -100,6 +100,32 @@ jobs:
     uses: rodkisten/github/.github/workflows/node-ci.yml@v1
 ```
 Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events.\n\nOverride `repository-key`, `base`, `config-repository`, `config-ref` or `config-path` in `with:`. Repository-specific filters extend defaults, and identically named filters replace them.
+
+
+## 🏗️ Filtered CI matrix
+
+Use the reusable workflow when each matched path filter should receive an independent job. The matched filter name is exposed to commands as `ROD_CI_FILTER`, so package scripts can select the relevant workspace or test suite without duplicating workflow YAML.
+
+```yaml
+name: 🚀 Filtered CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  filtered:
+    uses: rodkisten/github/.github/workflows/filtered-ci.yml@v1
+    with:
+      repository-key: userscripts-cf
+      node-version: '24'
+      working-directory: .
+      test-command: npm run test:affected
+      build-command: npm run build:affected
+```
+
+Each matching filter gets its own matrix job. Your scripts can read `process.env.ROD_CI_FILTER` (or `$ROD_CI_FILTER` in shell) and decide which workspace to test/build. For example, `runtime` and `scripts` can run independently and in parallel. If no filter matches, a successful explanatory job runs instead of creating an empty matrix. The workflow still checks out the caller repository and installs dependencies for each matrix job; optimize this later with per-filter working directories/install policies where needed.
+
+Inputs include the central config source (`config-repository`, `config-ref`, `config-path`), optional comparison `base`, Node version, working directory and test/build commands. Outputs expose the matched filter names and changed files.
 
 ## ⏭️ Skip expensive work
 ```yaml
