@@ -37,6 +37,9 @@ on:
       files:
         description: JSON array of changed file paths
         value: ${{ jobs.filter.outputs.files }}
+      full-run:
+        description: Whether all filters were selected as a safe initial-push fallback
+        value: ${{ jobs.filter.outputs.full-run }}
 jobs:
   filter:
     name: 🟦 Evaluate changed paths
@@ -48,6 +51,7 @@ jobs:
       changes: ${{ steps.paths.outputs.changes }}
       any: ${{ steps.paths.outputs.any }}
       files: ${{ steps.paths.outputs.files }}
+      full-run: ${{ steps.paths.outputs.full-run }}
     steps:
       - name: 🧬 Evaluate filters using Node 24
         id: paths
