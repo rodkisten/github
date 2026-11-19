@@ -1,5 +1,12 @@
 export type FileChange = { path: string; content: string; encoding?: 'utf-8' | 'base64' };
 
+export function validateBranchName(branch: string): void {
+  const invalid = !branch || branch.startsWith('/') || branch.endsWith('/') || branch.includes('//') ||
+    branch.includes('..') || branch.includes('@{') || /[\\s~^:?*\\[\\]\\\\]/.test(branch) ||
+    branch.split('/').some(segment => segment.startsWith('.') || segment.endsWith('.lock'));
+  if (invalid) throw new Error(`Invalid Git branch name: ${branch}`);
+}
+
 export function validateChanges(changes: unknown): asserts changes is FileChange[] {
   if (!Array.isArray(changes) || changes.length === 0) throw new Error('files must be a non-empty JSON array');
   const seen = new Set<string>();
