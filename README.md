@@ -82,7 +82,9 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🟦 Migrate shared Node CI runner and CI summary to TypeScript / Node 24
 - [x] 🤖 Add GitHub App `create-pr` and atomic `commit` actions
 - [x] 🧪 Add Vitest coverage for PR helpers, file validation and branch validation
-- [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
+- [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence
+- [x] 🧬 Support transitive dependencies between centralized path filters
+- [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
 - [ ] 🔬 Validate filtered matrix workflow end-to-end on a consumer repository\n- [ ] 🔔 Shared notification and auto-fix actions
