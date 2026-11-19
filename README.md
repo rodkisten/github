@@ -10,6 +10,7 @@
 - [🛡️ Security and releases](#️-security-and-releases)
 - [🧪 Validation](#-validation)
 - [🚧 Roadmap](#-roadmap)
+- [🚀 Release pipeline](#-release-pipeline)
 
 ## 🚀 Quick start
 Use a reusable workflow from your own repository:
@@ -96,3 +97,7 @@ npm run build
 ```
 
 Grant `contents: read` and `pull-requests: read` to the calling job. The action intentionally fails closed when GitHub's comparison results might be truncated. The existing Python dispatcher is legacy and will be replaced after the TypeScript action passes integration tests.
+
+## 🚀 Release pipeline
+
+Every push to `main` runs **one build, test and semantic-release workflow**. GitHub Releases and version tags are generated from Conventional Commits, while documentation-only commits run checks without creating a version. See [🚀 Release guide](docs/RELEASING.md) for the complete ToC, examples, permissions and troubleshooting.
