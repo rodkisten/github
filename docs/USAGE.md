@@ -8,7 +8,7 @@
 - [🧪 Local validation](#-local-validation)
 - [🚨 Troubleshooting](#-troubleshooting)
 
-> ⚠️ All examples use the planned `v1` release. It does **not** exist yet. Publish and validate before using these snippets in production.
+> 📦 Examples target the moving `v1` tag. Verify the published release and bundle before adopting new inputs in production.
 
 ## 🚀 Node CI
 ```yaml
@@ -44,7 +44,7 @@ jobs:
     if: contains(fromJSON(needs.changes.outputs.changes), 'runtime')
     uses: rodkisten/github/.github/workflows/node-ci.yml@v1
 ```
-Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events.
+Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events.\n\nOverride `repository-key`, `base`, `config-repository`, `config-ref` or `config-path` in `with:`. Repository-specific filters extend defaults, and identically named filters replace them.
 
 ## ⏭️ Skip expensive work
 ```yaml
@@ -62,7 +62,7 @@ For pull requests, resolve the head commit message explicitly: `head_commit.mess
 - id: auth
   uses: rodkisten/github/actions/app-token@v1
   with:
-    app-id: ${{ vars.BOT_APP_ID }}
+    app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
     permission-contents: write
     permission-pull-requests: write
@@ -71,12 +71,14 @@ Use the token only in trusted jobs with minimum required permissions.
 
 ## 🧪 Local validation
 ```bash
-python -m pip install 'PyYAML==6.0.2'
-python -m unittest discover -s tests -v
+npm ci
+npm run typecheck
+npm test
+npm run build
 ```
 
 ## 🚨 Troubleshooting
 - 🕳️ **No filters matched:** check the repository key and glob patterns in `config/paths.yml`.
 - 🔒 **App authentication failed:** verify installation, App ID, private key and permissions.
 - 💤 **Required check pending:** keep a stable gate job even when expensive work is skipped.
-- 📦 **Unknown `@v1`:** the shared workflow release has not been published yet.
+- 📦 **Unknown `@v1`:** verify the published major tag and its bundled `dist/` assets.
