@@ -9,6 +9,7 @@ async function main(): Promise<void> {
     { name: 'build', enabled: core.getBooleanInput('run-build'), command: core.getInput('build-command') },
   ];
   const results: Array<{ name: string } & CommandResult> = [];
+  let failure: Error | undefined;
   for (const task of tasks) {
     if (!task.enabled) continue;
     if (!task.command.trim()) throw new Error(`Missing ${task.name} command`);
@@ -16,7 +17,10 @@ async function main(): Promise<void> {
     try {
       const result = await execute(task.command, cwd);
       results.push({ name: task.name, ...result });
-      if (result.exitCode !== 0) throw new Error(`${task.name} exited with code ${result.exitCode}`);
+      if (result.exitCode !== 0) {
+        failure = new Error(`${task.name} exited with code ${result.exitCode}`);
+        break;
+      }
     } finally { core.endGroup(); }
   }
   await core.summary.addHeading('🟦 Shared Node CI')
@@ -24,5 +28,6 @@ async function main(): Promise<void> {
       [{ data: 'Task', header: true }, { data: 'Exit', header: true }, { data: 'Duration (ms)', header: true }],
       ...results.map(r => [r.name, String(r.exitCode), String(r.durationMs)]),
     ]).write();
+  if (failure) throw failure;
 }
 main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
