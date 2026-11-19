@@ -9,6 +9,7 @@ async function main(): Promise<void> {
   const tasks = [
     { name: 'test', enabled: core.getBooleanInput('run-tests'), command: core.getInput('test-command') },
     { name: 'build', enabled: core.getBooleanInput('run-build'), command: core.getInput('build-command') },
+    { name: 'lint', enabled: core.getBooleanInput('run-lint'), command: core.getInput('lint-command') },
   ];
   const results: Array<{ name: string } & CommandResult> = [];
   let failure: Error | undefined;
