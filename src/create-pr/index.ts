@@ -1,9 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-
-function csv(value: string): string[] {
-  return value.split(/[\r\n,]/).map(item => item.trim()).filter(Boolean);
-}
+import { appendConversationUrl, parseList } from './helpers.js';
 
 async function main(): Promise<void> {
   const token = core.getInput('token', { required: true });
@@ -16,10 +13,7 @@ async function main(): Promise<void> {
   const draft = core.getBooleanInput('draft');
   const updateExisting = core.getBooleanInput('update-existing');
   const conversationUrl = core.getInput('conversation-url');
-  let body = core.getInput('body');
-  if (conversationUrl && !body.includes(conversationUrl)) {
-    body = [body.trim(), '## 💬 Conversation', conversationUrl].filter(Boolean).join('\\n\\n');
-  }
+  const body = appendConversationUrl(core.getInput('body'), conversationUrl);
   const existing = await octokit.paginate(octokit.rest.pulls.list, {
     owner, repo, state: 'open', head: `${owner}:${head}`, base, per_page: 100,
   });
@@ -39,8 +33,8 @@ async function main(): Promise<void> {
     pullUrl = response.data.html_url;
     created = true;
   }
-  const labels = csv(core.getInput('labels'));
-  const reviewers = csv(core.getInput('reviewers'));
+  const labels = parseList(core.getInput('labels'));
+  const reviewers = parseList(core.getInput('reviewers'));
   if (labels.length) await octokit.rest.issues.addLabels({ owner, repo, issue_number: pullNumber, labels });
   if (reviewers.length) await octokit.rest.pulls.requestReviewers({ owner, repo, pull_number: pullNumber, reviewers });
   core.setOutput('number', String(pullNumber));
