@@ -99,7 +99,7 @@ jobs:
     if: contains(fromJSON(needs.changes.outputs.changes), 'runtime')
     uses: rodkisten/github/.github/workflows/node-ci.yml@v1
 ```
-Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events.\n\nOverride `repository-key`, `base`, `config-repository`, `config-ref` or `config-path` in `with:`. Repository-specific filters extend defaults, and identically named filters replace them.
+Filters come from `config/paths.yml`, selected by the caller's repository name. A local workflow is still needed to subscribe to GitHub events. Each filter can use the shorthand glob array or an object with `paths` and `depends-on`. When a changed filter declares dependencies, those dependency filters are included transitively in the output, allowing shared contracts and packages to trigger their affected consumers.\n\nOverride `repository-key`, `base`, `config-repository`, `config-ref` or `config-path` in `with:`. Repository-specific filters extend defaults, and identically named filters replace them.
 
 
 ## 🏗️ Filtered CI matrix
