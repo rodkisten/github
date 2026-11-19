@@ -67,7 +67,7 @@ on:
 jobs:
   changes:
     name: 🧬 Detect affected areas
-    uses: rodkisten/github/.github/workflows/paths-filter.yml@v1
+    uses: rodkisten/github/.github/workflows/paths-filter.yml@feat/typescript-reusable-workflows
     permissions:
       contents: read
       pull-requests: read
@@ -112,12 +112,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
-        uses: rodkisten/github/actions/setup-node@v1
+        uses: rodkisten/github/actions/setup-node@feat/typescript-reusable-workflows
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ matrix.working-directory }}
       - name: 🧪 Test and build affected area
-        uses: rodkisten/github/actions/node-ci@v1
+        uses: rodkisten/github/actions/node-ci@feat/typescript-reusable-workflows
         with:
           working-directory: ${{ matrix.working-directory }}
           scope: ${{ matrix.filter }}
@@ -129,7 +129,7 @@ jobs:
           run-lint: ${{ matrix.run-lint }}
       - name: 📋 Filter summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@v1
+        uses: rodkisten/github/actions/ci-summary@feat/typescript-reusable-workflows
         with:
           title: '🧬 Filtered CI · ${{ matrix.filter }}'
           status: ${{ job.status }}
