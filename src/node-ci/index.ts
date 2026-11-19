@@ -32,7 +32,7 @@ async function main(): Promise<void> {
       [{ data: 'Task', header: true }, { data: 'Exit', header: true }, { data: 'Duration (ms)', header: true }],
       ...results.map(r => [r.name, String(r.exitCode), String(r.durationMs)]),
     ])
-    .addRaw(`Skipped: ${skipped.join(', ') || 'none'}\\n\\nStatus: **${failure ? 'failed' : 'passed'}**\\n`)
+    .addRaw(`Skipped: ${skipped.join(', ') || 'none'}\n\nStatus: **${failure ? 'failed' : 'passed'}**\n`)
     .write();
   if (failure) throw failure;
 }
