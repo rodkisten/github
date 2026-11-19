@@ -61,6 +61,12 @@ on:
       files:
         description: JSON array of changed files
         value: ${{ jobs.changes.outputs.files }}
+      any:
+        description: Whether any filter matched
+        value: ${{ jobs.changes.outputs.any }}
+      full-run:
+        description: Whether the initial push selected all filters
+        value: ${{ jobs.changes.outputs.full-run }}
       matrix:
         description: JSON array of resolved filter commands
         value: ${{ jobs.changes.outputs.matrix }}
