@@ -4,11 +4,11 @@ set -Eeuo pipefail
 usage() {
   cat <<'HELP'
 Usage: gh-env-sync --file .env [--type secret|variable] [--scope repo|env] [--environment production] [--limit N] [--refresh-cache] [--cache-ttl SECONDS] [--owner USER] [--repo OWNER/NAME ...] [--dry-run] [--yes]
-Defaults: secret, repo, all non-archived repositories sorted by most recent push. Cache TTL: 15 minutes.
+Defaults: secret, repo, all non-archived repositories sorted by most recent push. Cache TTL: 24 hours.
 HELP
 }
-file=''; type=''; scope=''; environment=''; limit=0; owner=''; dry_run=false; yes=false; refresh_cache=false; cache_ttl=900
-repos=()
+file=''; type=''; scope=''; environment=''; limit=0; owner=''; dry_run=false; yes=false; refresh_cache=false; cache_ttl=86400
+repos=(); tmux_inner=false; no_tmux=false
 while (($#)); do
   case "$1" in
     --file) file=${2:?}; shift 2;;
@@ -17,6 +17,8 @@ while (($#)); do
     --environment|--env) environment=${2:?}; shift 2;;
     --limit) limit=${2:?}; shift 2;;
     --refresh-cache) refresh_cache=true; shift;;
+    --tmux-inner) tmux_inner=true; shift;;
+    --no-tmux) no_tmux=true; shift;;
     --cache-ttl) cache_ttl=${2:?}; shift 2;;
     --owner) owner=${2:?}; shift 2;;
     --repo) repos+=("${2:?}"); shift 2;;
@@ -26,6 +28,26 @@ while (($#)); do
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2;;
   esac
 done
+if [[ $tmux_inner == false && $no_tmux == false && -t 0 && -z ${TMUX:-} ]] && command -v tmux >/dev/null; then
+  session="gh-env-$(date +%s)-$"
+  log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-env-sync/sessions"
+  mkdir -p "$log_dir"; chmod 700 "$log_dir"
+  log_file="$log_dir/$session.log"; : > "$log_file"; chmod 600 "$log_file"
+  printf -v quoted "%q " "$0" "$@" --tmux-inner
+  tmux new-session -d -s "$session" -c "$PWD" -e "GH_ENV_STUDIO_LOG=$log_file" "bash -lc $(printf %q "$quoted")"
+  tmux split-window -t "$session":0 -v -l 35% -c "$PWD" "tail -n +1 -f $(printf %q "$log_file")"
+  tmux select-pane -t "$session":0.0
+  exec tmux attach-session -t "$session"
+fi
+studio_log() {
+  [[ -n ${GH_ENV_STUDIO_LOG:-} ]] || return 0
+  printf "%s\n" "$*" >> "$GH_ENV_STUDIO_LOG"
+}
+studio_event() {
+  local color=$1 label=$2 message=$3
+  printf "\033[48;5;%sm\033[38;5;16m %-8s \033[0m %s\n" "$color" "$label" "$message"
+  studio_log "[$label] $message"
+}
 if [[ -t 0 ]] && command -v fzf >/dev/null; then
   pick_one() { printf '%s\n' "$@" | fzf --reverse --height=~10 --border=rounded --color='border:magenta,prompt:cyan'; }
   pick_many() { printf '%s\n' "$@" | fzf --multi --reverse --height=~70% --border=rounded --bind='ctrl-a:select-all' --header='TAB toggle · Ctrl-A select all · Enter confirm' --color='border:magenta,prompt:cyan,pointer:magenta,header:yellow'; }
@@ -127,6 +149,7 @@ if declare -F pick_many >/dev/null; then
   selected=$(pick_many "${repos[@]}") || exit 0
   [[ -n $selected ]] || exit 0
   mapfile -t repos <<< "$selected"
+  studio_event 45 REPOS "${#repos[@]} selected: ${repos[*]}"
 fi
 mapfile -d '' -t entries < "$tmp"
 keys=(); for ((i=0;i<${#entries[@]};i+=2)); do keys+=("${entries[i]}"); done
@@ -134,8 +157,10 @@ if declare -F pick_many >/dev/null; then
   selected=$(pick_many "${keys[@]}") || exit 0
   [[ -n $selected ]] || exit 0
   mapfile -t keys <<< "$selected"
+  studio_event 141 KEYS "${#keys[@]} selected: ${keys[*]}"
 fi
 printf '\033[38;5;213m✦ GH ENV STUDIO ✦\033[0m\n'
+studio_event 99 TARGET "$type / $scope ${environment:-}"
 printf 'Scope: %s %s | Type: %s | Repositories: %s | Keys: %s\n' "$scope" "$environment" "$type" "${#repos[@]}" "${#keys[@]}"
 printf 'Keys: %s\n' "${keys[*]}"
 printf 'Repositories:\n'; printf '  %s\n' "${repos[@]}"
@@ -146,7 +171,7 @@ if [[ $yes != true && $dry_run != true ]]; then
 fi
 success=0; failure=0; skipped=0
 for repo in "${repos[@]}"; do
-  echo "==> $repo"
+  studio_event 27 REPO "$repo"
   if [[ $scope == env && $dry_run != true ]]; then
     if ! gh api -X PUT "repos/$repo/environments/$environment" >/dev/null; then
       echo "  ERROR creating environment" >&2; ((failure+=${#keys[@]})); continue
@@ -189,7 +214,7 @@ PY
     args=("$type" set "$key" --repo "$repo" --body "$value")
     [[ $scope == env ]] && args+=(--env "$environment")
     if [[ $dry_run == true ]]; then
-      printf '  ◌ preview %s\n' "$key"
+      studio_event 33 PREVIEW "$repo · $key"
       continue
     fi
     gh "${args[@]}" > "$tmp.output" 2>"$tmp.error" &
@@ -202,11 +227,12 @@ PY
       printf '\r\033[K' >&2
     fi
     if wait "$pid"; then
-      echo "  OK $key"; ((success+=1))
+      studio_event 34 PASS "$repo · $key"; ((success+=1))
     else
-      echo "  FAILED $key" >&2; head -3 "$tmp.error" >&2; ((failure+=1))
+      studio_event 196 FAIL "$repo · $key"; head -3 "$tmp.error" >&2; ((failure+=1))
     fi
   done
 done
+studio_log "[DONE] successful=$success failed=$failure skipped=$skipped"
 printf '\033[38;5;213m✦ Finished:\033[0m %d successful, %d failed, %d skipped\n' "$success" "$failure" "$skipped"
 ((failure == 0))
