@@ -45,8 +45,8 @@ jobs:
 | `actions/commit` | Atomic multi-file commits through the Git Database API |
 | `actions/node-ci` | Run configurable Node test/build commands with summaries |
 | `workflows/node-ci.yml` | Reusable Node test/build job |
-| `workflows/paths-filter.yml` | Central per-repository path filters |\n| `workflows/filtered-ci.yml` | Dynamic parallel CI matrix from matched filters |
-| `config/paths.yml` | Shared glob rules and per-filter commands |
+| `workflows/paths-filter.yml` | Central per-repository path filters and resolved command matrix |\n| `workflows/filtered-ci.yml` | Dynamic parallel CI matrix from matched filters |
+| `config/paths.yml` | Shared glob rules, task commands and working directories per filter |
 
 ## 🗺️ Architecture
 ```text
@@ -89,6 +89,7 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🧪 Validate every central repository filter config in Vitest
 - [x] 🧹 Add opt-in lint execution to the shared Node CI runner
 - [x] 🎛️ Resolve test/build/lint commands and working directories per filter
+- [x] 🧯 Support explicit `false` to disable individual tasks without falling back
 - [x] 🧪 Test per-filter overrides, task opt-outs and invalid command config
 - [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
