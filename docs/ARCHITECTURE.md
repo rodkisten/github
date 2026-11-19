@@ -34,12 +34,12 @@ Do not delete existing workflows until the replacement has completed successfull
 
 ## Reusable TypeScript paths filter
 
-Call `rodkisten/github/.github/workflows/paths-filter.yml@v1` from a caller workflow. The caller controls event triggers, while the reusable job evaluates changed files using the Node 24 action and `config/paths.yml`.
+Call `rodkisten/github/.github/workflows/paths-filter.yml@main` from a caller workflow. The caller controls event triggers, while the reusable job evaluates changed files using the Node 24 action and `config/paths.yml`.
 
 ```yaml
 jobs:
   paths:
-    uses: rodkisten/github/.github/workflows/paths-filter.yml@v1
+    uses: rodkisten/github/.github/workflows/paths-filter.yml@main
     permissions:
       contents: read
       pull-requests: read
@@ -56,6 +56,6 @@ jobs:
       - run: echo 'Changed filters: ${{ needs.paths.outputs.changes }}'
 ```
 
-The default configuration source is `rodkisten/github:main:config/paths.yml`. Override the source with `config-repository`, `config-ref` and `config-path`, or extend the shared configuration by adding repository-specific filters under `repositories.<key>.filters`. Defaults are inherited from `defaults.filters`, and a repository-specific filter of the same name overrides that default. `base` can override the push comparison base. Outputs: `changes` (JSON array), `files` (JSON array) and `any` (boolean string). The caller's token must be able to read the configuration repository and pull-request files.\n\nFor a dynamic build matrix, call `filtered-ci.yml@v1`. It creates one parallel job per matched filter and passes the filter name to child commands as `ROD_CI_FILTER`. It supports optional lint execution through `run-lint` and `lint-command`, disabled by default for backwards compatibility. Filter dependencies are expanded transitively before matrix creation; this selects all affected scopes but does not impose job execution order. Each filter may declare `working-directory` and `commands.test|build|lint` in `config/paths.yml`. The paths action resolves these into matrix entries; omitted commands use caller defaults and explicit `false` disables a task. Documentation defaults opt out of expensive commands. When no filters match, it emits a successful explanatory job and avoids an empty matrix.
+The default configuration source is `rodkisten/github:main:config/paths.yml`. Override the source with `config-repository`, `config-ref` and `config-path`, or extend the shared configuration by adding repository-specific filters under `repositories.<key>.filters`. Defaults are inherited from `defaults.filters`, and a repository-specific filter of the same name overrides that default. `base` can override the push comparison base. Outputs: `changes` (JSON array), `files` (JSON array) and `any` (boolean string). The caller's token must be able to read the configuration repository and pull-request files.\n\nFor a dynamic build matrix, call `filtered-ci.yml@main`. It creates one parallel job per matched filter and passes the filter name to child commands as `ROD_CI_FILTER`. It supports optional lint execution through `run-lint` and `lint-command`, disabled by default for backwards compatibility. Filter dependencies are expanded transitively before matrix creation; this selects all affected scopes but does not impose job execution order. Each filter may declare `working-directory` and `commands.test|build|lint` in `config/paths.yml`. The paths action resolves these into matrix entries; omitted commands use caller defaults and explicit `false` disables a task. Documentation defaults opt out of expensive commands. When no filters match, it emits a successful explanatory job and avoids an empty matrix.
 
-> Release sequencing: merge this change, publish a new `v1` bundle, then migrate consumer repositories. The reusable workflow references the published `@v1` action, not an unbundled TypeScript source file. Never assume an unreleased input exists in an older tag.
+> Release sequencing: merge this change, publish a new `v1` bundle, then migrate consumer repositories. The reusable workflow references the published `@main` action, not an unbundled TypeScript source file. Never assume an unreleased input exists in an older tag.
