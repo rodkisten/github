@@ -26,12 +26,9 @@ function patternsFor(name: string, rule: FilterRule, repository: string): string
   return paths;
 }
 
-function normalize(rule: FilterRule, name: string): { paths: string[]; dependencies: string[]; commands: FilterCommands; workingDirectory?: string } {
-  const paths = Array.isArray(rule) ? rule : rule?.paths;
+function normalize(rule: FilterRule, name: string, repository = 'unknown'): { paths: string[]; dependencies: string[]; commands: FilterCommands; workingDirectory?: string } {
+  const paths = patternsFor(name, rule, repository);
   const dependencies = Array.isArray(rule) ? [] : (rule?.dependsOn ?? rule?.['depends-on'] ?? []);
-  if (!Array.isArray(paths) || !paths.length || paths.some(path => typeof path !== 'string' || !path.trim())) {
-    throw new Error('Invalid paths for filter ' + name);
-  }
   if (!Array.isArray(dependencies) || dependencies.some(dep => typeof dep !== 'string' || !dep.trim())) {
     throw new Error('Invalid dependencies for filter ' + name);
   }
@@ -55,9 +52,9 @@ export function selectFilters(source: string, repository: string): Filters {
   if (!specific) throw new Error('No path rules configured for ' + repository);
   const filters = { ...config.defaults?.filters, ...specific.filters };
   if (!Object.keys(filters).length) throw new Error('No filters configured');
-  for (const [name, rule] of Object.entries(filters)) normalize(rule, name);
+  for (const [name, rule] of Object.entries(filters)) normalize(rule, name, repository);
   for (const [name, rule] of Object.entries(filters)) {
-    for (const dependency of normalize(rule, name).dependencies) {
+    for (const dependency of normalize(rule, name, repository).dependencies) {
       if (!(dependency in filters)) throw new Error('Unknown dependency ' + dependency + ' declared by filter ' + name);
     }
   }
