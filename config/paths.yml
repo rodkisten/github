@@ -1,0 +1,42 @@
+version: 1
+defaults:
+  filters:
+    documentation:
+      - '**/*.md'
+repositories:
+  userscripts-cf:
+    filters:
+      runtime:
+        - 'src/runtime/**'
+        - 'packages/**'
+        - 'package-lock.json'
+      scripts:
+        - 'src/userscripts/**'
+      ci:
+        - '.github/workflows/**'
+        - 'package.json'
+  photointel:
+    filters:
+      manage:
+        - 'apps/manage/**'
+      api:
+        - 'apps/api/**'
+      gpu:
+        - 'gpu/**'
+        - 'modal/**'
+      ci:
+        - '.github/workflows/**'
+  shell:
+    filters:
+      app:
+        - 'src/**'
+        - 'package.json'
+      ci:
+        - '.github/workflows/**'
+  roteador:
+    filters:
+      library:
+        - 'src/**'
+        - 'package.json'
+      ci:
+        - '.github/workflows/**'

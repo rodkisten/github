@@ -1,0 +1,42 @@
+name: Skip CI decision
+description: Decide whether expensive CI jobs should be skipped while leaving a successful gate
+inputs:
+  commit-message:
+    description: Commit message (caller supplies event-appropriate message)
+    required: true
+  actor:
+    description: GitHub actor
+    required: false
+    default: ${{ github.actor }}
+  skip-bots:
+    description: Whether bot-authored commits may skip CI
+    required: false
+    default: 'false'
+outputs:
+  skip:
+    description: 'true when expensive jobs should be skipped'
+    value: ${{ steps.decide.outputs.skip }}
+  reason:
+    description: Human-readable decision
+    value: ${{ steps.decide.outputs.reason }}
+runs:
+  using: composite
+  steps:
+    - id: decide
+      shell: bash
+      env:
+        MESSAGE: ${{ inputs.commit-message }}
+        ACTOR: ${{ inputs.actor }}
+        SKIP_BOTS: ${{ inputs.skip-bots }}
+      run: |
+        skip=false
+        reason=normal
+        if [[ "$MESSAGE" =~ \[(skip[[:space:]]ci|ci[[:space:]]skip)\] ]]; then
+          skip=true
+          reason=commit-marker
+        elif [[ "$SKIP_BOTS" == true && "$ACTOR" == *"[bot]" ]]; then
+          skip=true
+          reason=bot-actor
+        fi
+        echo "skip=$skip" >> "$GITHUB_OUTPUT"
+        echo "reason=$reason" >> "$GITHUB_OUTPUT"

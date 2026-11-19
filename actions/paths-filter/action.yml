@@ -1,0 +1,31 @@
+name: 🧬 Central paths filter
+description: Match changed GitHub files against centralized repository YAML filters
+inputs:
+  token:
+    description: GitHub token with contents read and pull-requests read
+    required: true
+  config-repository:
+    description: Repository containing config/paths.yml
+    required: false
+    default: rodkisten/github
+  config-ref:
+    description: Reviewed configuration ref
+    required: false
+    default: main
+  config-path:
+    description: YAML configuration path
+    required: false
+    default: config/paths.yml
+  repository-key:
+    description: Override repository key
+    required: false
+outputs:
+  changes:
+    description: JSON array of matching filter names
+  any:
+    description: Whether any filter matched
+  files:
+    description: JSON array of changed paths
+runs:
+  using: node24
+  main: ../../dist/paths-filter.js
