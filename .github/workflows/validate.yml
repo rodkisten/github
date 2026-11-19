@@ -32,7 +32,9 @@ jobs:
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          if (!existsSync('dist/paths-filter.js') || !statSync('dist/paths-filter.js').size) {
-            throw new Error('Missing bundled paths-filter action');
+          for (const name of ['paths-filter', 'node-ci']) {
+            if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
+              throw new Error(`Missing bundled ${name} action`);
+            }
           }
           NODE
