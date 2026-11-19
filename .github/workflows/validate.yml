@@ -30,6 +30,22 @@ jobs:
           build-command: node -e "process.exit(0)"
           run-tests: 'true'
           run-build: 'true'
+      - name: 🧯 Smoke-test expected command failure
+        id: expected-failure
+        continue-on-error: true
+        uses: ./actions/node-ci
+        with:
+          test-command: node -e "process.exit(7)"
+          run-build: 'false'
+      - name: 🔍 Assert failure was propagated
+        env:
+          OUTCOME: ${{ steps.expected-failure.outcome }}
+        run: |
+          if [ "$OUTCOME" != failure ]; then
+            echo "::error::Expected TypeScript Node CI action to fail, got $OUTCOME"
+            exit 1
+          fi
+          echo '🧯 Expected failure correctly propagated.' >> "$GITHUB_STEP_SUMMARY"
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
