@@ -4,6 +4,8 @@ import { execute, type CommandResult } from './runner.js';
 
 async function main(): Promise<void> {
   const cwd = resolve(core.getInput('working-directory') || '.');
+  const scope = core.getInput('scope');
+  const commandEnv = { ...process.env, ...(scope ? { ROD_CI_FILTER: scope } : {}) };
   const tasks = [
     { name: 'test', enabled: core.getBooleanInput('run-tests'), command: core.getInput('test-command') },
     { name: 'build', enabled: core.getBooleanInput('run-build'), command: core.getInput('build-command') },
@@ -16,7 +18,7 @@ async function main(): Promise<void> {
     if (!task.command.trim()) { failure = new Error(`Missing ${task.name} command`); break; }
     core.startGroup(`🟦 ${task.name}: ${task.command}`);
     try {
-      const result = await execute(task.command, cwd);
+      const result = await execute(task.command, cwd, undefined, commandEnv);
       results.push({ name: task.name, ...result });
       if (result.exitCode !== 0) {
         failure = new Error(`${task.name} exited with code ${result.exitCode}`);
