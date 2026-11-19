@@ -3,11 +3,11 @@ set -Eeuo pipefail
 
 usage() {
   cat <<'HELP'
-Usage: gh-env-sync --file .env [--type secret|variable] [--scope repo|env] [--environment production] [--limit 10] [--owner USER] [--repo OWNER/NAME ...] [--dry-run] [--yes]
-Defaults: secret, repo, 10 most recently pushed non-archived repositories owned by the authenticated user.
+Usage: gh-env-sync --file .env [--type secret|variable] [--scope repo|env] [--environment production] [--limit N] [--refresh-cache] [--cache-ttl SECONDS] [--owner USER] [--repo OWNER/NAME ...] [--dry-run] [--yes]
+Defaults: secret, repo, all non-archived repositories sorted by most recent push. Cache TTL: 15 minutes.
 HELP
 }
-file=''; type=''; scope=''; environment=''; limit=10; owner=''; dry_run=false; yes=false
+file=''; type=''; scope=''; environment=''; limit=0; owner=''; dry_run=false; yes=false; refresh_cache=false; cache_ttl=900
 repos=()
 while (($#)); do
   case "$1" in
@@ -16,6 +16,8 @@ while (($#)); do
     --scope) scope=${2:?}; shift 2;;
     --environment|--env) environment=${2:?}; shift 2;;
     --limit) limit=${2:?}; shift 2;;
+    --refresh-cache) refresh_cache=true; shift;;
+    --cache-ttl) cache_ttl=${2:?}; shift 2;;
     --owner) owner=${2:?}; shift 2;;
     --repo) repos+=("${2:?}"); shift 2;;
     --dry-run) dry_run=true; shift;;
@@ -37,7 +39,7 @@ fi
 [[ $type == secret || $type == variable ]] || { echo 'Invalid --type' >&2; exit 2; }
 [[ $scope == repo || $scope == env ]] || { echo 'Invalid --scope' >&2; exit 2; }
 [[ $scope != env || -n $environment ]] || { echo 'Environment name required for --scope env' >&2; exit 2; }
-[[ $limit =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid --limit' >&2; exit 2; }
+[[ $limit =~ ^[0-9]+$ && $cache_ttl =~ ^[0-9]+$ ]] || { echo 'Invalid --limit' >&2; exit 2; }
 for cmd in gh python3; do command -v "$cmd" >/dev/null || { echo "Missing $cmd" >&2; exit 1; }; done
 gh auth status >/dev/null 2>&1 || { echo 'Run gh auth login first' >&2; exit 1; }
 
@@ -83,7 +85,42 @@ PY
 
 if (("${#repos[@]}" == 0)); then
   owner=${owner:-$(gh api user --jq .login)}
-  mapfile -t repos < <(gh api --paginate "users/$owner/repos?per_page=100&type=owner" --jq '.[] | select(.archived == false and .disabled == false) | [.pushed_at, .full_name] | @tsv' | sort -r | head -n "$limit" | cut -f2)
+  cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-env-sync"
+  mkdir -p "$cache_dir"
+  chmod 700 "$cache_dir"
+  cache_file="$cache_dir/repos-$owner.tsv"
+  cache_fresh=false
+  if [[ -s $cache_file && $refresh_cache == false ]]; then
+    if python3 - "$cache_file" "$cache_ttl" <<'PY'
+import os,sys,time
+sys.exit(0 if time.time()-os.path.getmtime(sys.argv[1]) < int(sys.argv[2]) else 1)
+PY
+    then cache_fresh=true; fi
+  fi
+  if [[ $cache_fresh == false ]]; then
+    printf '\\033[38;5;51m◐ Loading repositories from GitHub...\\033[0m\\n' >&2
+    cache_tmp=$(mktemp "$cache_dir/.repos.XXXXXX")
+    if gh repo list "$owner" --limit 10000 --json nameWithOwner,pushedAt,isArchived,isFork > "$cache_tmp.json"; then
+      python3 - "$cache_tmp.json" "$cache_tmp" <<'PY'
+import json,sys,pathlib
+items=json.load(open(sys.argv[1]))
+items=sorted((r for r in items if not r['isArchived']),key=lambda r:r.get('pushedAt') or '',reverse=True)
+pathlib.Path(sys.argv[2]).write_text(''.join(f"{r['nameWithOwner']}\\n" for r in items))
+PY
+      mv -f "$cache_tmp" "$cache_file"
+      chmod 600 "$cache_file"
+      rm -f "$cache_tmp.json"
+      printf '\\033[38;5;118m✓ Repository cache refreshed\\033[0m\\n' >&2
+    else
+      rm -f "$cache_tmp" "$cache_tmp.json"
+      if [[ ! -s $cache_file ]]; then echo 'Cannot load repositories and no cache exists' >&2; exit 1; fi
+      echo '⚠ GitHub unavailable; using stale repository cache' >&2
+    fi
+  else
+    printf '\\033[38;5;118m✓ Repository cache hit\\033[0m\\n' >&2
+  fi
+  mapfile -t repos < "$cache_file"
+  if ((limit > 0)); then repos=("${repos[@]:0:limit}"); fi
 fi
 (("${#repos[@]}")) || { echo 'No repositories found' >&2; exit 1; }
 if declare -F pick_many >/dev/null; then
