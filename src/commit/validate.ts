@@ -3,7 +3,7 @@ export type FileChange = { path: string; content: string; encoding?: 'utf-8' | '
 export function validateBranchName(branch: string): void {
   const forbidden = /[\\s~^:?*\\[\\]\\\\]/;
   const invalid = !branch || branch.startsWith('/') || branch.endsWith('/') || branch.includes('//') ||
-    branch.includes('..') || branch.includes('@{') || forbidden.test(branch) ||
+    branch.includes('..') || branch.includes('@{') || forbidden ||
     branch.split('/').some(segment => segment.startsWith('.') || segment.endsWith('.lock'));
   if (invalid) throw new Error('Invalid Git branch name: ' + branch);
 }
