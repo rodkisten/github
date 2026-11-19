@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 
 function csv(value: string): string[] {
-  return value.split(/[\\n,]/).map(item => item.trim()).filter(Boolean);
+  return value.split(/[\r\n,]/).map(item => item.trim()).filter(Boolean);
 }
 
 async function main(): Promise<void> {
