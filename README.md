@@ -83,6 +83,7 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🤖 Add GitHub App `create-pr` and atomic `commit` actions
 - [x] 🧪 Add Vitest coverage for PR helpers, file validation and branch validation
 - [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence
+- [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
 - [ ] 🔔 Shared notification and auto-fix actions
 - [ ] 🧹 Audit and migrate repositories, then remove redundant workflows
@@ -151,7 +152,7 @@ The shared actions accept a short-lived installation token created by `actions/a
     update-existing: 'true'
 ```
 
-The action reuses an open PR for the same head/base by default. Outputs: `number`, `url`, `created`, `updated`. Its Octokit operation is dependency-injected and covered for create, update, duplicate prevention, labels and reviewers.
+The action reuses an open PR for the same head/base by default. Outputs: `number`, `url`, `created`, `updated`. Its Octokit operation is extracted into `src/create-pr/operation.ts` and dependency-injected. Vitest covers create, update, duplicate prevention, labels and reviewers.
 
 ### Commit multiple files atomically
 
@@ -174,6 +175,6 @@ The action reuses an open PR for the same head/base by default. Outputs: `number
       [{"path":"docs/generated.md","content":"# Generated\\n"}]
 ```
 
-The `files` input is a JSON array of `path`, `content`, and optional `encoding: base64`. The action creates one Git commit for all files, rejects unsafe/duplicate paths and updates refs without force. Outputs: `sha`, `branch`, `files`. Mocked Octokit integration tests verify branch creation, UTF-8/Base64 blob creation, a single tree/commit and a non-force ref update.
+The `files` input is a JSON array of `path`, `content`, and optional `encoding: base64`. The action creates one Git commit for all files, rejects unsafe/duplicate paths and updates refs without force. Outputs: `sha`, `branch`, `files`. The Git Database sequence is extracted into `src/commit/operation.ts`. Mocked Octokit integration tests verify branch creation, UTF-8/Base64 blob creation, a single tree/commit and a non-force ref update.
 
 🧪 **Integration coverage:** `tests/github-actions.test.ts` exercises the PR create/update paths and the Git Database API sequence with mocked Octokit calls. No real repository writes are performed by these tests.\n\n> 🚧 These examples target the published `v1` interface. New actions and inputs must be bundled, validated and released before production callers adopt them. Current development and rollout tracking lives in [PR #5](https://github.com/rodkisten/github/pull/5).
