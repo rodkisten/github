@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { resolveMatchedFilters, selectFilters } from './rules.js';
+import { buildFilterMatrix, resolveMatchedFilters, selectFilters } from './rules.js';
 
 async function main(): Promise<void> {
   const token = core.getInput('token', { required: true });
@@ -49,6 +49,16 @@ async function main(): Promise<void> {
   core.setOutput('changes', JSON.stringify(changes));
   core.setOutput('any', String(changes.length > 0));
   core.setOutput('full-run', String(fullRun));
+  const matrix = buildFilterMatrix(changes, filters, {
+    workingDirectory: core.getInput('working-directory') || '.',
+    testCommand: core.getInput('test-command') || 'npm test',
+    buildCommand: core.getInput('build-command') || 'npm run build',
+    lintCommand: core.getInput('lint-command') || 'npm run lint',
+    runTests: core.getBooleanInput('run-tests'),
+    runBuild: core.getBooleanInput('run-build'),
+    runLint: core.getBooleanInput('run-lint'),
+  });
+  core.setOutput('matrix', JSON.stringify(matrix));
   await core.summary.addHeading('🧬 Central paths filter').addTable([
     [{ data: 'Repository', header: true }, { data: 'Changed files', header: true }, { data: 'Matched filters', header: true }],
     [`${owner}/${repo}`, String(files.length), fullRun ? 'Initial push · all filters' : changes.join(', ') || 'None'],
