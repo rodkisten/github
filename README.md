@@ -87,6 +87,7 @@ The validation workflow also smoke-tests the bundled actions. Do not remove or w
 - [x] 🛟 Select every filter on a new-branch push when no comparison base exists
 - [x] 🗂️ Audit workflow inventory for userscripts-cf, photointel, shell and roteador
 - [x] 🧪 Validate every central repository filter config in Vitest
+- [x] 🧹 Add opt-in lint execution to the shared Node CI runner
 - [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
 - [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
 - [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
