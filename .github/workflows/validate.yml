@@ -46,6 +46,12 @@ jobs:
             exit 1
           fi
           echo '🧯 Expected failure correctly propagated.' >> "$GITHUB_STEP_SUMMARY"
+      - name: 📝 Smoke-test TypeScript CI summary
+        uses: ./actions/ci-summary
+        with:
+          title: '🧪 TypeScript Action integration'
+          status: success
+          details: 'Bundled Node 24 summary action executed successfully.'
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
@@ -56,7 +62,7 @@ jobs:
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          for (const name of ['paths-filter', 'node-ci']) {
+          for (const name of ['paths-filter', 'node-ci', 'ci-summary']) {
             if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
               throw new Error(`Missing bundled ${name} action`);
             }
