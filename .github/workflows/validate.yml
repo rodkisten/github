@@ -1,8 +1,6 @@
 name: Validate shared CI
 on:
   pull_request:
-  push:
-    branches: [main]
 jobs:
   validate:
     runs-on: ubuntu-latest
