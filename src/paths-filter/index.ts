@@ -27,7 +27,7 @@ async function main(): Promise<void> {
     if (changes.length >= 3000) throw new Error('PR file listing reached GitHub API limit; refusing incomplete filter');
     files = changes.flatMap(f => f.previous_filename ? [f.filename, f.previous_filename] : [f.filename]);
   } else if (github.context.eventName === 'push') {
-    const before = github.context.payload.before;
+    const before = core.getInput('base') || github.context.payload.before;
     const after = github.context.sha;
     if (!before || /^0+$/.test(before)) throw new Error('New branch push requires explicit full-run fallback');
     const result = await octokit.rest.repos.compareCommitsWithBasehead({ owner, repo, basehead: `${before}...${after}`, per_page: 100 });
