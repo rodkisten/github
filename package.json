@@ -1,0 +1,26 @@
+{
+  "name": "@rodkisten/github-actions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@actions/core": "^3.1.0",
+    "@actions/github": "^9.1.1",
+    "picomatch": "^4.0.3",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/picomatch": "^4.0.2",
+    "tsdown": "^0.15.0",
+    "typescript": "^6.0.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
