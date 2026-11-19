@@ -19,6 +19,13 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      - name: 🤖 Authenticate Rod GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
       - name: 📥 Checkout source branch
         uses: actions/checkout@v4
         with:
@@ -58,7 +65,7 @@ jobs:
         env:
           TARGET_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const fs = require('node:fs');
             const { owner, repo } = context.repo;
@@ -76,6 +83,14 @@ jobs:
             await github.rest.repos.createOrUpdateFileContents({
               owner, repo, path, branch, content, sha,
               message: 'chore(lockfile): regenerate npm lockfile',
+              committer: {
+                name: `${{ steps.app-token.outputs.app-slug }}[bot]`,
+                email: `${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com`,
+              },
+              author: {
+                name: `${{ steps.app-token.outputs.app-slug }}[bot]`,
+                email: `${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com`,
+              },
             });
             core.summary.addHeading('🔒 Lockfile repaired').addRaw(`Updated \`${path}\` on \`${branch}\` via GitHub API.\n`).write();
       - name: 💤 Already synchronized
