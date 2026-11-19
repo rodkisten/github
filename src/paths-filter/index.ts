@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { matchChangedFiles, selectFilters } from './rules.js';
+import { resolveMatchedFilters, selectFilters } from './rules.js';
 
 async function main(): Promise<void> {
   const token = core.getInput('token', { required: true });
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
     throw new Error(`Unsupported event ${github.context.eventName}; use a dedicated dispatch policy`);
   }
   files = [...new Set(files)];
-  const changes = fullRun ? Object.keys(filters) : matchChangedFiles(files, filters);
+  const changes = resolveMatchedFilters(files, filters, fullRun);
   core.setOutput('files', JSON.stringify(files));
   core.setOutput('changes', JSON.stringify(changes));
   core.setOutput('any', String(changes.length > 0));
