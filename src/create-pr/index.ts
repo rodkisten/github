@@ -25,9 +25,6 @@ async function main(): Promise<void> {
     if (!updateExisting) throw new Error(`PR #${pull.number} already exists for ${head} → ${base}`);
     const response = await octokit.rest.pulls.update({ owner, repo, pull_number: pull.number, title, body, ...(core.getInput('maintainer-can-modify') ? { maintainer_can_modify: core.getBooleanInput('maintainer-can-modify') } : {}) });
     pull = response.data;
-    await octokit.rest.pulls.updateBranch({ owner, repo, pull_number: pull.number }).catch(error => {
-      if ((error as { status?: number }).status !== 422) throw error;
-    });
   } else {
     const response = await octokit.rest.pulls.create({ owner, repo, head, base, title, body, draft });
     pull = response.data;
