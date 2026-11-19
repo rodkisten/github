@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { appendConversationUrl, parseList } from '../src/create-pr/helpers.js';
-import { validateChanges } from '../src/commit/validate.js';
+import { validateBranchName, validateChanges } from '../src/commit/validate.js';
 
 describe('create-pr helpers', () => {
   it('parses comma and newline separated labels/reviewers', () => {
@@ -33,5 +33,14 @@ describe('commit file validation', () => {
     [[{ path: 'file.txt', content: 'x', encoding: 'binary' }], 'Unsupported encoding'],
   ])('rejects invalid file changes', (value, message) => {
     expect(() => validateChanges(value)).toThrow(message as string);
+  });
+});
+
+describe('commit branch validation', () => {
+  it.each(['main', 'automation/update-lockfile', 'release/v1.2.3'])('accepts valid branch %s', branch => {
+    expect(() => validateBranchName(branch)).not.toThrow();
+  });
+  it.each(['', '/main', 'main/', 'feature//branch', '../main', 'branch name', 'main.lock', 'x\\\\y'])('rejects invalid branch %s', branch => {
+    expect(() => validateBranchName(branch)).toThrow('Invalid Git branch name');
   });
 });
