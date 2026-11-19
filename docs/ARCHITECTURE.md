@@ -22,7 +22,7 @@ Source: https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=pla
 - [x] Define initial per-repository glob rules (provisional, not audited).
 - [x] Add app-token and skip-ci composite actions.
 - [x] Migrate the central filter workflow to the first-party TypeScript action and configurable YAML source.\n- [ ] Add schema validation and dry-run coverage for all repository filters.\n- [x] Add reusable filtered CI matrix with one parallel job per matched filter and safe no-match handling.
-- [ ] Inventory every active repository and workflow, including required checks and deploy triggers.
+- [x] Inventory workflows for userscripts-cf, photointel, shell and roteador; classify specialized operations for preservation.\n- [ ] Audit required checks, deploy triggers and all remaining workflow responsibilities.
 - [ ] Validate actual file paths, dry-run filters and publish a summary.
 - [ ] Migrate one repository at a time; verify checks before deleting old workflows.
 - [ ] Consolidate duplicate lockfile repair, formatting, build and notification workflows.
