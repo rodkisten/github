@@ -7,7 +7,7 @@ Usage: gh-env-sync --file .env [--type secret|variable] [--scope repo|env] [--en
 Defaults: secret, repo, 10 most recently pushed non-archived repositories owned by the authenticated user.
 HELP
 }
-file=''; type=secret; scope=repo; environment=''; limit=10; owner=''; dry_run=false; yes=false
+file=''; type=''; scope=''; environment=''; limit=10; owner=''; dry_run=false; yes=false
 repos=()
 while (($#)); do
   case "$1" in
@@ -24,6 +24,15 @@ while (($#)); do
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2;;
   esac
 done
+if [[ -t 0 ]] && command -v fzf >/dev/null; then
+  pick_one() { printf '%s\n' "$@" | fzf --reverse --height=~10 --border=rounded --color='border:magenta,prompt:cyan'; }
+  pick_many() { printf '%s\n' "$@" | fzf --multi --reverse --height=~70% --border=rounded --bind='ctrl-a:select-all' --header='TAB toggle · Ctrl-A select all · Enter confirm' --color='border:magenta,prompt:cyan,pointer:magenta,header:yellow'; }
+  [[ -n $type ]] || type=$(pick_one secret variable) || exit 0
+  [[ -n $scope ]] || scope=$(pick_one repo env) || exit 0
+  if [[ $scope == env && -z $environment ]]; then read -r -p '🌐 Environment: ' environment; fi
+else
+  type=${type:-secret}; scope=${scope:-repo}
+fi
 [[ -f "$file" ]] || { echo 'Missing --file or file does not exist' >&2; exit 2; }
 [[ $type == secret || $type == variable ]] || { echo 'Invalid --type' >&2; exit 2; }
 [[ $scope == repo || $scope == env ]] || { echo 'Invalid --scope' >&2; exit 2; }
@@ -77,8 +86,19 @@ if (("${#repos[@]}" == 0)); then
   mapfile -t repos < <(gh api --paginate "users/$owner/repos?per_page=100&type=owner" --jq '.[] | select(.archived == false and .disabled == false) | [.pushed_at, .full_name] | @tsv' | sort -r | head -n "$limit" | cut -f2)
 fi
 (("${#repos[@]}")) || { echo 'No repositories found' >&2; exit 1; }
+if declare -F pick_many >/dev/null; then
+  selected=$(pick_many "${repos[@]}") || exit 0
+  [[ -n $selected ]] || exit 0
+  mapfile -t repos <<< "$selected"
+fi
 mapfile -d '' -t entries < "$tmp"
 keys=(); for ((i=0;i<${#entries[@]};i+=2)); do keys+=("${entries[i]}"); done
+if declare -F pick_many >/dev/null; then
+  selected=$(pick_many "${keys[@]}") || exit 0
+  [[ -n $selected ]] || exit 0
+  mapfile -t keys <<< "$selected"
+fi
+printf '\033[38;5;213m✦ GH ENV STUDIO ✦\033[0m\n'
 printf 'Scope: %s %s | Type: %s | Repositories: %s | Keys: %s\n' "$scope" "$environment" "$type" "${#repos[@]}" "${#keys[@]}"
 printf 'Keys: %s\n' "${keys[*]}"
 printf 'Repositories:\n'; printf '  %s\n' "${repos[@]}"
@@ -87,7 +107,7 @@ if [[ $yes != true ]]; then
   read -r -p 'Apply all changes? Type YES: ' confirmation
   [[ $confirmation == YES ]] || { echo 'Cancelled'; exit 1; }
 fi
-success=0; failure=0
+success=0; failure=0; skipped=0
 for repo in "${repos[@]}"; do
   echo "==> $repo"
   if [[ $scope == env ]]; then
@@ -95,8 +115,52 @@ for repo in "${repos[@]}"; do
       echo "  ERROR creating environment" >&2; ((failure+=${#keys[@]})); continue
     fi
   fi
+  if [[ $type == variable ]]; then
+    args=(variable list --repo "$repo" --json name,value)
+    [[ $scope == env ]] && args+=(--env "$environment")
+    if ! gh "${args[@]}" > "$tmp.current"; then
+      echo "Cannot inspect variables in $repo; skipping" >&2
+      ((skipped+=${#keys[@]})); continue
+    fi
+  fi
   for ((i=0;i<${#entries[@]};i+=2)); do
     key=${entries[i]}; value=${entries[i+1]}
+    selected=false
+    for chosen in "${keys[@]}"; do [[ $chosen == "$key" ]] && selected=true; done
+    [[ $selected == true ]] || continue
+    if [[ $type == variable ]]; then
+      result=$(python3 - "$tmp.current" "$key" "$value" <<'PY'
+import json,sys
+items=json.load(open(sys.argv[1]))
+old=next((x.get('value','') for x in items if x['name']==sys.argv[2]),None)
+new=sys.argv[3]
+if old is None: print('NEW')
+elif old==new: print('SAME')
+else:
+ print('CHANGE')
+ print('  current: '+repr(old))
+ print('  next:    '+repr(new))
+PY
+)
+      state=${result%%
+    args=("$type" set "$key" --repo "$repo" --body "$value")
+    [[ $scope == env ]] && args+=(--env "$environment")
+    if gh "${args[@]}" >/dev/null; then
+      echo "  OK $key"; ((success+=1))
+    else
+      echo "  FAILED $key" >&2; ((failure+=1))
+    fi
+  done
+done
+printf '\033[38;5;213m✦ Finished:\033[0m %d successful, %d failed, %d skipped\n' "$success" "$failure" "$skipped"
+((failure == 0))
+\n'*}
+      if [[ $state == NEW || $state == SAME ]]; then
+        printf '  ⊘ %s: %s (skipped)\n' "$key" "$state"
+        ((skipped+=1)); continue
+      fi
+      printf '\033[38;5;51m↻ %s\033[0m\n%s\n' "$key" "$result"
+    fi
     args=("$type" set "$key" --repo "$repo" --body "$value")
     [[ $scope == env ]] && args+=(--env "$environment")
     if gh "${args[@]}" >/dev/null; then
