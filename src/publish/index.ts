@@ -3,7 +3,6 @@ import * as github from '@actions/github';
 import Handlebars from 'handlebars';
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readlinkSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
 
 type Octokit = ReturnType<typeof github.getOctokit>;
 
@@ -177,7 +176,6 @@ async function publish() {
   if (open.data.length) {
     const updated = await octokit.rest.pulls.update({
       owner, repo, pull_number: open.data[0].number, title, body,
-      draft: core.getBooleanInput('draft'),
     });
     pull = updated.data;
   } else {

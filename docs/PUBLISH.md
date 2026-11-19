@@ -48,7 +48,7 @@ Use a GitHub App installation token when commits must trigger downstream workflo
     labels: automation,generated
 ```
 
-An open PR with the same head and base is updated instead of duplicated. Existing PR branch history is preserved by creating the new commit on top of its current head.
+An open PR with the same head and base is updated instead of duplicated. Existing PR branch history is preserved by creating the new commit on top of its current head. The draft flag is applied when creating a PR; updating an existing PR preserves its current draft/ready state.
 
 ## Template variables
 
