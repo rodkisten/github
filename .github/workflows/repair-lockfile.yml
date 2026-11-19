@@ -1,0 +1,83 @@
+name: 🔒 Repair npm lockfile
+run-name: 🔒 Lockfile · ${{ github.event.pull_request.number && format('PR #{0}', github.event.pull_request.number) || github.ref_name }}
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - package.json
+      - .github/workflows/repair-lockfile.yml
+permissions:
+  contents: write
+  pull-requests: read
+concurrency:
+  group: lockfile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  repair:
+    name: 📦 Regenerate npm lockfile
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: 🟩 Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 🔐 Regenerate lockfile only
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: 🧪 Verify lockfile matches manifest
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+          const root = lock.packages?.[''];
+          if (!root) throw new Error('Lockfile missing root package');
+          for (const kind of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+            for (const [name, range] of Object.entries(pkg[kind] ?? {})) {
+              if (root[kind]?.[name] !== range) throw new Error(`Lockfile mismatch: ${name}`);
+            }
+          }
+          NODE
+      - name: 🔎 Detect changes
+        id: changed
+        run: |
+          if git diff --quiet -- package-lock.json && git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: 📝 Update lockfile via GitHub API
+        if: steps.changed.outputs.changed == 'true'
+        uses: actions/github-script@v8
+        env:
+          TARGET_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('node:fs');
+            const { owner, repo } = context.repo;
+            const branch = process.env.TARGET_BRANCH;
+            const path = 'package-lock.json';
+            const content = fs.readFileSync(path).toString('base64');
+            let sha;
+            try {
+              const current = await github.rest.repos.getContent({owner, repo, path, ref: branch});
+              if (Array.isArray(current.data)) throw new Error('Expected lockfile');
+              sha = current.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo, path, branch, content, sha,
+              message: 'chore(lockfile): regenerate npm lockfile [skip ci]',
+            });
+            core.summary.addHeading('🔒 Lockfile repaired').addRaw(`Updated \`${path}\` on \`${branch}\` via GitHub API.\n`).write();
+      - name: 💤 Already synchronized
+        if: steps.changed.outputs.changed == 'false'
+        run: echo '🔒 Lockfile is already synchronized.' >> "$GITHUB_STEP_SUMMARY"
