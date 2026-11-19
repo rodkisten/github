@@ -1,11 +1,24 @@
 import picomatch from 'picomatch';
 import YAML from 'yaml';
 
-type FilterRule = string[] | { paths: string[]; dependsOn?: string[]; 'depends-on'?: string[] };
+export interface FilterCommands {
+  test?: string | false;
+  build?: string | false;
+  lint?: string | false;
+}
+export interface FilterOptions {
+  paths: string[];
+  dependsOn?: string[];
+  'depends-on'?: string[];
+  commands?: FilterCommands;
+  'working-directory'?: string;
+  workingDirectory?: string;
+}
+type FilterRule = string[] | FilterOptions;
 type Filters = Record<string, FilterRule>;
 type Config = { version: number; defaults?: { filters?: Filters }; repositories?: Record<string, { filters?: Filters }> };
 
-function normalize(rule: FilterRule, name: string): { paths: string[]; dependencies: string[] } {
+function normalize(rule: FilterRule, name: string): { paths: string[]; dependencies: string[]; commands: FilterCommands; workingDirectory?: string } {
   const paths = Array.isArray(rule) ? rule : rule?.paths;
   const dependencies = Array.isArray(rule) ? [] : (rule?.dependsOn ?? rule?.['depends-on'] ?? []);
   if (!Array.isArray(paths) || !paths.length || paths.some(path => typeof path !== 'string' || !path.trim())) {
@@ -14,7 +27,17 @@ function normalize(rule: FilterRule, name: string): { paths: string[]; dependenc
   if (!Array.isArray(dependencies) || dependencies.some(dep => typeof dep !== 'string' || !dep.trim())) {
     throw new Error('Invalid dependencies for filter ' + name);
   }
-  return { paths, dependencies };
+  const commands = Array.isArray(rule) ? {} : (rule.commands ?? {});
+  for (const [task, command] of Object.entries(commands)) {
+    if (!['test', 'build', 'lint'].includes(task) || (command !== false && (typeof command !== 'string' || !command.trim()))) {
+      throw new Error('Invalid ' + task + ' command for filter ' + name);
+    }
+  }
+  const workingDirectory = Array.isArray(rule) ? undefined : (rule['working-directory'] ?? rule.workingDirectory);
+  if (workingDirectory !== undefined && (typeof workingDirectory !== 'string' || !workingDirectory.trim())) {
+    throw new Error('Invalid working-directory for filter ' + name);
+  }
+  return { paths, dependencies, commands, workingDirectory };
 }
 
 export function selectFilters(source: string, repository: string): Filters {
@@ -62,4 +85,42 @@ export function matchChangedFiles(files: string[], filters: Filters): string[] {
 
 export function resolveMatchedFilters(files: string[], filters: Filters, fullRun = false): string[] {
   return fullRun ? Object.keys(filters) : matchChangedFiles(files, filters);
+}
+
+export interface FilterMatrixDefaults {
+  workingDirectory: string;
+  testCommand: string;
+  buildCommand: string;
+  lintCommand: string;
+  runTests: boolean;
+  runBuild: boolean;
+  runLint: boolean;
+}
+export interface FilterMatrixEntry {
+  filter: string;
+  'working-directory': string;
+  'test-command': string;
+  'build-command': string;
+  'lint-command': string;
+  'run-tests': boolean;
+  'run-build': boolean;
+  'run-lint': boolean;
+}
+export function buildFilterMatrix(changes: string[], filters: Filters, defaults: FilterMatrixDefaults): FilterMatrixEntry[] {
+  return changes.map(name => {
+    const rule = filters[name];
+    if (!rule) throw new Error('Unknown filter ' + name);
+    const normalized = normalize(rule, name);
+    const commands = normalized.commands;
+    return {
+      filter: name,
+      'working-directory': normalized.workingDirectory ?? defaults.workingDirectory,
+      'test-command': typeof commands.test === 'string' ? commands.test : defaults.testCommand,
+      'build-command': typeof commands.build === 'string' ? commands.build : defaults.buildCommand,
+      'lint-command': typeof commands.lint === 'string' ? commands.lint : defaults.lintCommand,
+      'run-tests': commands.test === false ? false : typeof commands.test === 'string' ? true : defaults.runTests,
+      'run-build': commands.build === false ? false : typeof commands.build === 'string' ? true : defaults.runBuild,
+      'run-lint': commands.lint === false ? false : typeof commands.lint === 'string' ? true : defaults.runLint,
+    };
+  });
 }
