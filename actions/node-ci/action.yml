@@ -20,6 +20,12 @@ inputs:
   run-build:
     description: Execute build command
     default: 'true'
+  lint-command:
+    description: Lint command
+    default: npm run lint
+  run-lint:
+    description: Execute lint command
+    default: 'false'
 runs:
   using: node24
   main: ../../dist/node-ci.js
