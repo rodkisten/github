@@ -1,0 +1,21 @@
+name: 🟦 TypeScript Node CI runner
+description: Execute configured Node test and build commands with grouped logs and a job summary
+inputs:
+  working-directory:
+    description: Project directory
+    default: '.'
+  test-command:
+    description: Test command
+    default: npm test
+  build-command:
+    description: Build command
+    default: npm run build
+  run-tests:
+    description: Execute test command
+    default: 'true'
+  run-build:
+    description: Execute build command
+    default: 'true'
+runs:
+  using: node24
+  main: ../../dist/node-ci.js
