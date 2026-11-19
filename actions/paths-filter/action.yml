@@ -23,6 +23,27 @@ inputs:
   repository-key:
     description: Override repository key
     required: false
+  working-directory:
+    description: Fallback project directory for filters without an override
+    default: '.'
+  test-command:
+    description: Fallback test command
+    default: npm test
+  build-command:
+    description: Fallback build command
+    default: npm run build
+  lint-command:
+    description: Fallback lint command
+    default: npm run lint
+  run-tests:
+    description: Run fallback test command
+    default: 'true'
+  run-build:
+    description: Run fallback build command
+    default: 'true'
+  run-lint:
+    description: Run fallback lint command
+    default: 'false'
 outputs:
   changes:
     description: JSON array of matching filter names
@@ -32,6 +53,8 @@ outputs:
     description: JSON array of changed paths
   full-run:
     description: Whether all filters were selected as a safe initial-push fallback
+  matrix:
+    description: JSON array of filter-specific CI task configurations
 runs:
   using: node24
   main: ../../dist/paths-filter.js
