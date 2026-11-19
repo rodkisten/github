@@ -1,27 +1,43 @@
 version: 1
+
 defaults:
   filters:
     documentation:
       - '**/*.md'
+
 repositories:
   userscripts-cf:
     filters:
       runtime:
         - 'src/runtime/**'
         - 'packages/**'
+        - 'package.json'
         - 'package-lock.json'
       scripts:
         - 'src/userscripts/**'
+      tests:
+        - 'tests/**'
+        - '**/*.test.ts'
+        - '**/*.spec.ts'
       ci:
         - '.github/workflows/**'
+        - '.github/actions/**'
         - 'package.json'
+        - 'package-lock.json'
+        - 'tsconfig*.json'
+        - 'vitest.config.*'
+
   photointel:
     filters:
       api-contracts:
         - 'packages/contracts/**'
+        - 'packages/shared/**'
       api:
         paths:
           - 'apps/api/**'
+          - 'bridges/**'
+          - 'pyproject.toml'
+          - 'uv.lock'
         depends-on:
           - api-contracts
       manage:
@@ -29,22 +45,82 @@ repositories:
           - 'apps/manage/**'
         depends-on:
           - api-contracts
+      frontend-web:
+        paths:
+          - 'apps/web/**'
+          - 'packages/ui/**'
+          - 'packages/shared/**'
+      frontend-manage:
+        paths:
+          - 'apps/manage/**'
+          - 'packages/ui/**'
+          - 'packages/shared/**'
       gpu:
         - 'gpu/**'
         - 'modal/**'
+        - 'tests/gpu/**'
+      integration:
+        - 'tests/integration/**'
+        - 'tests/e2e/**'
+      containers:
+        - 'Dockerfile*'
+        - '**/Dockerfile'
+        - 'docker-compose*.yml'
+        - 'compose*.yml'
+        - 'cloudbuild*.yaml'
+      infrastructure:
+        - 'infra/**'
+        - 'terraform/**'
+        - 'tf/**'
+      security:
+        - 'requirements*.txt'
+        - '**/requirements*.txt'
+        - 'pyproject.toml'
+        - 'uv.lock'
+        - 'package.json'
+        - '**/package.json'
+        - 'package-lock.json'
+        - '**/package-lock.json'
       ci:
         - '.github/workflows/**'
+        - '.github/actions/**'
+        - 'scripts/ci/**'
+        - 'Makefile'
+
   shell:
     filters:
       app:
         - 'src/**'
         - 'package.json'
+        - 'package-lock.json'
+        - 'tsconfig*.json'
+        - 'vite.config.*'
+      wasm:
+        - 'wasm/**'
+        - 'src/wasm/**'
+        - 'scripts/wasm/**'
+      assets:
+        - 'public/**'
+        - 'assets/**'
       ci:
         - '.github/workflows/**'
+        - '.github/actions/**'
+        - 'package.json'
+        - 'package-lock.json'
+
   roteador:
     filters:
       library:
         - 'src/**'
         - 'package.json'
+        - 'pnpm-lock.yaml'
+        - 'tsconfig*.json'
+      tests:
+        - 'tests/**'
+        - '**/*.test.ts'
+        - '**/*.spec.ts'
       ci:
         - '.github/workflows/**'
+        - '.github/actions/**'
+        - 'package.json'
+        - 'pnpm-lock.yaml'
