@@ -102,15 +102,15 @@ printf '\033[38;5;213m✦ GH ENV STUDIO ✦\033[0m\n'
 printf 'Scope: %s %s | Type: %s | Repositories: %s | Keys: %s\n' "$scope" "$environment" "$type" "${#repos[@]}" "${#keys[@]}"
 printf 'Keys: %s\n' "${keys[*]}"
 printf 'Repositories:\n'; printf '  %s\n' "${repos[@]}"
-if [[ $dry_run == true ]]; then echo 'DRY RUN: no changes made'; exit 0; fi
-if [[ $yes != true ]]; then
+if [[ $dry_run == true ]]; then echo 'DRY RUN: preview only'; fi
+if [[ $yes != true && $dry_run != true ]]; then
   read -r -p 'Apply all changes? Type YES: ' confirmation
   [[ $confirmation == YES ]] || { echo 'Cancelled'; exit 1; }
 fi
 success=0; failure=0; skipped=0
 for repo in "${repos[@]}"; do
   echo "==> $repo"
-  if [[ $scope == env ]]; then
+  if [[ $scope == env && $dry_run != true ]]; then
     if ! gh api -X PUT "repos/$repo/environments/$environment" >/dev/null; then
       echo "  ERROR creating environment" >&2; ((failure+=${#keys[@]})); continue
     fi
@@ -145,10 +145,23 @@ PY
       state=${result%%
     args=("$type" set "$key" --repo "$repo" --body "$value")
     [[ $scope == env ]] && args+=(--env "$environment")
-    if gh "${args[@]}" >/dev/null; then
+    if [[ $dry_run == true ]]; then
+      printf '  ◌ preview %s\n' "$key"
+      continue
+    fi
+    gh "${args[@]}" > "$tmp.output" 2>"$tmp.error" &
+    pid=$!; frame=0; frames=('◐' '◓' '◑' '◒')
+    if [[ -t 2 ]]; then
+      while kill -0 "$pid" 2>/dev/null; do
+        printf '\r\033[K\033[38;5;213m%s\033[0m %s · %s' "${frames[frame%4]}" "$repo" "$key" >&2
+        frame=$((frame+1)); sleep .12
+      done
+      printf '\r\033[K' >&2
+    fi
+    if wait "$pid"; then
       echo "  OK $key"; ((success+=1))
     else
-      echo "  FAILED $key" >&2; ((failure+=1))
+      echo "  FAILED $key" >&2; head -3 "$tmp.error" >&2; ((failure+=1))
     fi
   done
 done
