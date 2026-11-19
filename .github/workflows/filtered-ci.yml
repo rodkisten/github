@@ -1,0 +1,116 @@
+name: 🧬 Filtered CI matrix
+on:
+  workflow_call:
+    inputs:
+      repository-key:
+        type: string
+        required: false
+        default: ''
+      config-repository:
+        type: string
+        required: false
+        default: rodkisten/github
+      config-ref:
+        type: string
+        required: false
+        default: main
+      config-path:
+        type: string
+        required: false
+        default: config/paths.yml
+      base:
+        type: string
+        required: false
+        default: ''
+      node-version:
+        type: string
+        required: false
+        default: '24'
+      working-directory:
+        type: string
+        required: false
+        default: '.'
+      test-command:
+        type: string
+        required: false
+        default: 'npm test'
+      build-command:
+        type: string
+        required: false
+        default: 'npm run build'
+      run-tests:
+        type: boolean
+        required: false
+        default: true
+      run-build:
+        type: boolean
+        required: false
+        default: true
+    outputs:
+      changes:
+        description: JSON array of matched filter names
+        value: ${{ jobs.changes.outputs.changes }}
+      files:
+        description: JSON array of changed files
+        value: ${{ jobs.changes.outputs.files }}
+jobs:
+  changes:
+    name: 🧬 Detect affected areas
+    uses: rodkisten/github/.github/workflows/paths-filter.yml@v1
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      repository-key: ${{ inputs.repository-key }}
+      config-repository: ${{ inputs.config-repository }}
+      config-ref: ${{ inputs.config-ref }}
+      config-path: ${{ inputs.config-path }}
+      base: ${{ inputs.base }}
+
+  no-changes:
+    name: 💤 No matching paths
+    needs: changes
+    if: needs.changes.outputs.any != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📝 Explain skipped matrix
+        env:
+          FILES: ${{ needs.changes.outputs.files }}
+        run: |
+          echo 'No configured filter matched the changed files.' >> "$GITHUB_STEP_SUMMARY"
+          echo "```json" >> "$GITHUB_STEP_SUMMARY"
+          echo "$FILES" >> "$GITHUB_STEP_SUMMARY"
+          echo "```" >> "$GITHUB_STEP_SUMMARY"
+
+  filtered:
+    name: 🏗️ ${{ matrix.filter }}
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        filter: ${{ fromJSON(needs.changes.outputs.changes) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🟩 Setup Node
+        uses: rodkisten/github/actions/setup-node@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
+      - name: 🧪 Test and build affected area
+        uses: rodkisten/github/actions/node-ci@v1
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          scope: ${{ matrix.filter }}
+          test-command: ${{ inputs.test-command }}
+          build-command: ${{ inputs.build-command }}
+          run-tests: ${{ inputs.run-tests }}
+          run-build: ${{ inputs.run-build }}
+      - name: 📋 Filter summary
+        if: always()
+        uses: rodkisten/github/actions/ci-summary@v1
+        with:
+          title: '🧬 Filtered CI · ${{ matrix.filter }}'
+          status: ${{ job.status }}
+          details: 'ROD_CI_FILTER=${{ matrix.filter }}'
