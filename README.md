@@ -106,3 +106,20 @@ Every push to `main` runs **one build, test and semantic-release workflow**. Git
 ## 🌈 rodlog integration
 
 Our PR and release workflows install the verified Go-powered `rodlog` binary for TypeScript, Vitest and bundle diagnostics. See [🌈 rodlog guide](docs/RODLOG.md) for copy-paste recipes, output modes and security notes.
+
+## 🧬 Configuração dos filtros por repositório
+
+Edite [`config/paths.yml`](https://github.com/rodkisten/github/blob/main/config/paths.yml) em `repositories.<nome-do-repositorio>.filters.<nome-do-filtro>`. Cada filtro aceita uma lista de globs ou um objeto `paths` (com `commands` opcionais). Exemplos:
+
+```yaml
+repositories:
+  shell:
+    filters:
+      app:
+        paths: ['src/**', '!src/generated/**']
+        commands:
+          build: npm run build
+      docs: ['**/*.md']
+```
+
+Erros de filtro agora indicam o repositório, o nome do filtro e o link para o arquivo de configuração. O workflow consumidor deve usar uma versão da action cujo `dist/paths-filter.js` tenha sido reconstruído com o parser atualizado.
