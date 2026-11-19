@@ -75,7 +75,7 @@ jobs:
             }
             await github.rest.repos.createOrUpdateFileContents({
               owner, repo, path, branch, content, sha,
-              message: 'chore(lockfile): regenerate npm lockfile [skip ci]',
+              message: 'chore(lockfile): regenerate npm lockfile',
             });
             core.summary.addHeading('🔒 Lockfile repaired').addRaw(`Updated \`${path}\` on \`${branch}\` via GitHub API.\n`).write();
       - name: 💤 Already synchronized
