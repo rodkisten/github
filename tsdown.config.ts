@@ -2,6 +2,7 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   entry: { 'paths-filter': 'src/paths-filter/index.ts' },
   format: 'esm',
+  outExtensions: () => ({ js: '.js' }),
   platform: 'node',
   target: 'node24',
   outDir: 'dist',
