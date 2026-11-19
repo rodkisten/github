@@ -1,17 +1,7 @@
 import * as core from '@actions/core';
-import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
+import { execute, type CommandResult } from './runner.js';
 
-export type CommandResult = { command: string; exitCode: number; durationMs: number };
-export async function execute(command: string, cwd: string, shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash'): Promise<CommandResult> {
-  const started = Date.now();
-  const child = spawn(command, { cwd, shell, stdio: 'inherit', env: process.env });
-  const exitCode = await new Promise<number>((done, reject) => {
-    child.once('error', reject);
-    child.once('close', (code, signal) => signal ? reject(new Error(`Command terminated by ${signal}`)) : done(code ?? 1));
-  });
-  return { command, exitCode, durationMs: Date.now() - started };
-}
 async function main(): Promise<void> {
   const cwd = resolve(core.getInput('working-directory') || '.');
   const tasks = [
