@@ -52,8 +52,13 @@ describe('central filter dependencies', () => {
 describe('repository path configuration', () => {
   const source = readFileSync(new URL('../config/paths.yml', import.meta.url), 'utf8');
 
-  it.each(['userscripts-cf', 'photointel', 'shell', 'roteador'])('validates central rules for %s', repository => {
-    expect(Object.keys(selectFilters(source, repository)).length).toBeGreaterThan(0);
+  it.each(['userscripts-cf', 'photointel', 'shell', 'roteador'])('validates central rules and matrix commands for %s', repository => {
+    const filters = selectFilters(source, repository);
+    expect(Object.keys(filters).length).toBeGreaterThan(0);
+    expect(() => buildFilterMatrix(Object.keys(filters), filters, {
+      workingDirectory: '.', testCommand: 'npm test', buildCommand: 'npm run build',
+      lintCommand: 'npm run lint', runTests: true, runBuild: true, runLint: false,
+    })).not.toThrow();
   });
 
   it('selects every configured filter for a safe full-run fallback', () => {
