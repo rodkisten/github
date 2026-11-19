@@ -1,5 +1,12 @@
 import unittest
-from scripts.select_paths import select
+import importlib.util
+from pathlib import Path
+
+module_path = Path(__file__).resolve().parents[1] / "scripts" / "select-paths.py"
+spec = importlib.util.spec_from_file_location("select_paths", module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+select = module.select
 
 class SelectPathsTests(unittest.TestCase):
     def test_merge_and_override(self):
