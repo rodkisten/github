@@ -44161,6 +44161,12 @@ var import_core = /* @__PURE__ */ __toESM$1(require_core(), 1);
 var import_github = /* @__PURE__ */ __toESM$1(require_github(), 1);
 var import_picomatch = /* @__PURE__ */ __toESM$1(require_picomatch(), 1);
 var import_dist = /* @__PURE__ */ __toESM$1(require_dist(), 1);
+const configUrl = (repository) => `https://github.com/rodkisten/github/blob/main/config/paths.yml#L1`;
+function patternsFor(name, rule, repository) {
+	const paths = Array.isArray(rule) ? rule : rule?.paths;
+	if (!Array.isArray(paths) || !paths.length || paths.some((p) => typeof p !== "string" || !p.trim())) throw new Error(`Invalid paths for filter "${name}" in repository "${repository}". Expected a nonempty glob array or { paths: [...] }. Configure the repository entry at ${configUrl(repository)} (repositories → ${repository} → filters → ${name}).`);
+	return paths;
+}
 function selectFilters(source, repository) {
 	const config = import_dist.parse(source);
 	if (config?.version !== 1) throw new Error("Unsupported config version");
@@ -44171,14 +44177,14 @@ function selectFilters(source, repository) {
 		...specific.filters
 	};
 	if (!Object.keys(filters).length) throw new Error("No filters configured");
-	for (const [name, patterns] of Object.entries(filters)) if (!Array.isArray(patterns) || !patterns.length || patterns.some((p) => typeof p !== "string" || !p.trim())) throw new Error(`Invalid patterns for filter ${name}`);
+	for (const [name, rule] of Object.entries(filters)) patternsFor(name, rule, repository);
 	return filters;
 }
 function matchChangedFiles(files, filters) {
-	return Object.entries(filters).filter(([, patterns]) => files.some((file) => patterns.some((pattern) => {
+	return Object.entries(filters).filter(([, patterns]) => files.some((file) => (Array.isArray(patterns) ? patterns : patterns.paths).some((pattern) => {
 		const exclude = pattern.startsWith("!");
 		const glob = exclude ? pattern.slice(1) : pattern;
-		return !exclude && import_picomatch.default.isMatch(file, glob, { dot: true }) && !patterns.some((p) => p.startsWith("!") && import_picomatch.default.isMatch(file, p.slice(1), { dot: true }));
+		return !exclude && import_picomatch.default.isMatch(file, glob, { dot: true }) && !(Array.isArray(patterns) ? patterns : patterns.paths).some((p) => p.startsWith("!") && import_picomatch.default.isMatch(file, p.slice(1), { dot: true }));
 	}))).map(([name]) => name);
 }
 // src/paths-filter/index.ts
