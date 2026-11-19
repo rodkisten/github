@@ -62,7 +62,7 @@ jobs:
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          for (const name of ['paths-filter', 'node-ci', 'ci-summary']) {
+          for (const name of ['paths-filter', 'node-ci', 'ci-summary', 'create-pr', 'commit']) {
             if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
               throw new Error(`Missing bundled ${name} action`);
             }
