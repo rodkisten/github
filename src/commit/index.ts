@@ -35,8 +35,11 @@ async function main(): Promise<void> {
     owner, repo, base_tree: parent.data.tree.sha,
     tree: changes.map(file => ({
       path: file.path, mode: '100644' as const, type: 'blob' as const,
-      content: file.encoding === 'base64' ? undefined : file.content,
-      ...(file.encoding === 'base64' ? { sha: undefined, content: Buffer.from(file.content, 'base64').toString('utf8') } : {}),
+      sha: (await octokit.rest.git.createBlob({
+        owner, repo,
+        content: file.content,
+        encoding: file.encoding === 'base64' ? 'base64' : 'utf-8',
+      })).data.sha,
     })),
   });
   const commit = await octokit.rest.git.createCommit({
