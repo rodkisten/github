@@ -46,7 +46,7 @@ async function createTree(octokit: Octokit, owner: string, repo: string, baseTre
     }
     const stat = lstatSync(path);
     if (stat.isDirectory()) continue;
-    const mode = stat.isSymbolicLink() ? '120000' : (stat.mode & 0o111) !== 0 ? '100755' : '100644';
+    const mode: '120000' | '100755' | '100644' = stat.isSymbolicLink() ? '120000' : (stat.mode & 0o111) !== 0 ? '100755' : '100644';
     const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(path)) : readFileSync(path);
     const blob = await octokit.rest.git.createBlob({
       owner, repo, content: bytes.toString('base64'), encoding: 'base64',
@@ -79,7 +79,8 @@ async function publish() {
     : ['', ''];
   if (!owner || !repo) throw new Error('Cannot resolve repository from GitHub context');
 
-  const baseBranch = core.getInput('base-branch') || context.payload.repository?.default_branch || 'main';
+  const payload = context.payload as Record<string, any>;
+  const baseBranch = core.getInput('base-branch') || payload.repository?.default_branch || 'main';
   const requestedBranch = core.getInput('branch');
   const branch = mode === 'commit'
     ? (requestedBranch || context.ref.replace(/^refs\/heads\//, ''))
@@ -110,9 +111,9 @@ async function publish() {
     sha: context.sha, shortSha: context.sha.slice(0, 7), actor: context.actor,
     workflow: context.workflow, runId: context.runId, runNumber: context.runNumber,
     runUrl, eventName: context.eventName, ref: context.ref, refName: context.ref.replace(/^refs\/(heads|tags)\//, ''),
-    prNumber: context.payload.pull_request?.number ?? null,
+    prNumber: payload.pull_request?.number ?? null,
     timestamp: new Date().toISOString(), files: paths, fileCount: paths.length,
-    inputs: (context.payload.inputs as Record<string, unknown> | undefined) ?? {},
+    inputs: (payload.inputs as Record<string, unknown> | undefined) ?? {},
     ...custom,
   };
 
