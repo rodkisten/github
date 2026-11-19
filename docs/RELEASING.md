@@ -32,7 +32,7 @@ test -s dist/paths-filter.js
 ```
 
 ## 🏷️ Versioning
-Immutable tags such as `v1.2.3` are created by semantic-release. Do not use `@v1` until a moving major tag is explicitly implemented; prefer `@v1.2.3` or an immutable SHA.
+Immutable tags such as `v1.2.3` are created by semantic-release. Do not use `@main` until a moving major tag is explicitly implemented; prefer `@main.2.3` or an immutable SHA.
 
 ## 🔐 Permissions
 The release job needs `contents: write` to push its generated assets and tag, and GitHub Release permissions. Branch protection must permit the release bot to push its generated commit. The workflow authenticates with `BOT_APP_ID` (secret) and `BOT_PRIVATE_KEY` (secret), using `actions/create-github-app-token@v2`. Install the App on this repository with Contents write and Issues/Pull requests write permissions. Repository rulesets must explicitly allow the App to push release commits and tags.
@@ -46,7 +46,7 @@ The release job needs `contents: write` to push its generated assets and tag, an
 
 ## 🧭 Major tag aliases
 
-After semantic-release creates `v1.2.3`, the toolkit-based publish hook updates `v1` to the exact same commit. Consumers can use `@v1` for compatible updates or `@v1.2.3` for fixed versions. A new major version creates `v2` without moving `v1`.
+After semantic-release creates `v1.2.3`, the toolkit-based publish hook updates `v1` to the exact same commit. Consumers can use `@main` for compatible updates or `@main.2.3` for fixed versions. A new major version creates `v2` without moving `v1`.
 
 > 🧪 This integration has been committed but has **not** yet been validated in a live release.
 
