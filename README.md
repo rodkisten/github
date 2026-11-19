@@ -25,14 +25,14 @@ on:
     branches: [main]
 jobs:
   ci:
-    uses: rodkisten/github/.github/workflows/node-ci.yml@v1
+    uses: rodkisten/github/.github/workflows/node-ci.yml@main
     with:
       node-version: '24'
       test-command: npm run test:runtime
       build-command: npm run build
 ```
 
-⚠️ `@v1` is a **future release**, not published yet. Do not migrate production callers until a tested tag exists.
+Use `@main` for shared workflows and actions. Changes on main take effect immediately for consumers; validate CI before merging.
 
 ## 🧩 What's inside
 | 🧱 Component | 🎯 Purpose |
@@ -116,7 +116,7 @@ npm run build
 ### 🧬 Action usage (after bundling and release)
 
 ```yaml
-- uses: rodkisten/github/actions/paths-filter@v1
+- uses: rodkisten/github/actions/paths-filter@main
   id: changes
   with:
     token: ${{ github.token }}
@@ -142,7 +142,7 @@ The shared actions accept a short-lived installation token created by `actions/a
 ```yaml
 - name: 🔐 Create installation token
   id: app
-  uses: rodkisten/github/actions/app-token@v1
+  uses: rodkisten/github/actions/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -150,7 +150,7 @@ The shared actions accept a short-lived installation token created by `actions/a
     permission-contents: read
 - name: 🤖 Create or update PR
   id: pr
-  uses: rodkisten/github/actions/create-pr@v1
+  uses: rodkisten/github/actions/create-pr@main
   with:
     token: ${{ steps.app.outputs.token }}
     head: automation/update-lockfile
@@ -169,13 +169,13 @@ The action reuses an open PR for the same head/base by default. Outputs: `number
 ```yaml
 - name: 🔐 Create installation token
   id: app
-  uses: rodkisten/github/actions/app-token@v1
+  uses: rodkisten/github/actions/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
     permission-contents: write
 - name: 📝 Commit generated documentation
-  uses: rodkisten/github/actions/commit@v1
+  uses: rodkisten/github/actions/commit@main
   with:
     token: ${{ steps.app.outputs.token }}
     branch: automation/generated-docs
