@@ -60,7 +60,7 @@ jobs:
       - name: 🏗️ Bundle JavaScript actions
         run: rodlog exec --mode=transform -- npm run build
       - name: 📋 Verify action bundle
-        run: test -s dist/paths-filter.js && test -s dist/node-ci.js && test -s dist/ci-summary.js
+        run: test -s dist/paths-filter.js && test -s dist/node-ci.js && test -s dist/ci-summary.js && test -s dist/console.js && test -s dist/console-run.js
       - name: 🏷️ Analyze commits, version & publish release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
