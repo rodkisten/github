@@ -188,3 +188,10 @@ The action reuses an open PR for the same head/base by default. Outputs: `number
 The `files` input is a JSON array of `path`, `content`, and optional `encoding: base64`. The action creates one Git commit for all files, rejects unsafe/duplicate paths and updates refs without force. Outputs: `sha`, `branch`, `files`. The Git Database sequence is extracted into `src/commit/operation.ts`. Mocked Octokit integration tests verify branch creation, UTF-8/Base64 blob creation, a single tree/commit and a non-force ref update.
 
 🧪 **Integration coverage:** `tests/github-actions.test.ts` exercises the PR create/update paths and the Git Database API sequence with mocked Octokit calls. No real repository writes are performed by these tests.\n\n> 🚧 These examples target the published `v1` interface. New actions and inputs must be bundled, validated and released before production callers adopt them. Current development and rollout tracking lives in [PR #5](https://github.com/rodkisten/github/pull/5).
+
+## 🏷️ Hybrid releases and Actions Console
+
+- [🚀 Reusable hybrid release guide](docs/HYBRID_RELEASE.md)
+- [🧩 Centralized Actions Console and hooks architecture](docs/ACTIONS_CONSOLE.md)
+
+The Actions Console document is a proposal; notification hooks are not implemented yet.
