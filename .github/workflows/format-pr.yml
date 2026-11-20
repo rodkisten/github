@@ -33,8 +33,8 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck && npm test && npm run build
-      - name: 🔬 Verify action bundles load
-        run: node --input-type=module -e "import('./dist/format.js'); import('./dist/format-report.js')"
+      - name: 🔬 Verify standalone action bundles
+        run: node --input-type=module -e "import { readFileSync } from 'node:fs'; for (const name of ['format', 'format-report', 'commit']) { const code = readFileSync('dist/' + name + '.js', 'utf8'); if (/from [\u0027\u0022]\\.\\//.test(code)) throw new Error(name + ' imports a missing local chunk'); }"
       - name: 🎨 Format source
         id: format
         uses: ./actions/format
