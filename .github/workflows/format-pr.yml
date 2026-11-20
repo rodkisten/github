@@ -61,7 +61,7 @@ jobs:
           author-name: ploocky[bot]
           author-email: ploocky[bot]@users.noreply.github.com
       - name: 📋 Update PR format report
-        if: always() && steps.app.outcome == 'success'
+        if: always() && steps.app.outcome == 'success' && steps.format.outcome == 'success'
         uses: ./actions/format-report
         with:
           github-token: ${{ steps.app.outputs.token }}
