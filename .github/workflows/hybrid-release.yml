@@ -159,10 +159,12 @@ jobs:
             if (!existing) await github.rest.git.createRef({ owner, repo, ref: 'refs/tags/' + tag, sha: context.sha });
             const release = await github.rest.repos.createRelease({
               owner, repo, tag_name: tag, target_commitish: context.sha,
-              name: tag, generate_release_notes: true, draft: false, prerelease: false
+              name: tag, generate_release_notes: true, draft: true, prerelease: false
             });
             const patterns = process.env.ASSETS.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
             const files = [...new Set(patterns.flatMap(pattern => [...fs.globSync(pattern)]))].sort();
+            const names = files.map(file => path.basename(file));
+            if (new Set(names).size !== names.length) throw new Error('Duplicate release asset basenames');
             for (const file of files) {
               if (!fs.statSync(file).isFile()) continue;
               await github.rest.repos.uploadReleaseAsset({
@@ -170,5 +172,6 @@ jobs:
                 data: fs.readFileSync(file), headers: { 'content-type': 'application/octet-stream' }
               });
             }
+            await github.rest.repos.updateRelease({ owner, repo, release_id: release.data.id, draft: false });
             core.setOutput('published', 'true');
             await core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
