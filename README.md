@@ -195,3 +195,10 @@ The `files` input is a JSON array of `path`, `content`, and optional `encoding: 
 - [🧩 Centralized Actions Console and hooks architecture](docs/ACTIONS_CONSOLE.md)
 
 The Actions Console document is a proposal; notification hooks are not implemented yet.
+
+### 🧩 Console actions (experimental)
+
+- `actions/console`: typed YAML configuration and read-only GitHub job/step event collector.
+- `actions/console-run`: instrumented Bash command runner with exit-code, duration and job summary.
+
+These actions require a published `dist` build after merge. Relay delivery and automatic step injection are not implemented.
