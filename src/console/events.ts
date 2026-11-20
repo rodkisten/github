@@ -2,8 +2,10 @@ import { shouldNotify } from './config.js';
 import type { RodConfig } from './config.js';
 import { eventDedupeKey } from './config.js';
 
+export type Event = { type: string; conclusion?: string; repository: string; runId: number; jobId?: number; step?: string; url: string; timestamp: string; dedupeKey: string };
+
 export function selectEvents(config: RodConfig, jobs: Array<{
-  id: number; name: string; conclusion: string | null; html_url: string | null;
+  id: number; name: string; conclusion: string | null; html_url: string | null; status?: string;
   steps?: Array<{ name: string; conclusion: string | null }> | null;
 }>, repository: string, runId: number): Event[] {
   const events: Event[] = [];
@@ -17,7 +19,7 @@ export function selectEvents(config: RodConfig, jobs: Array<{
       if (!step.conclusion) continue;
       add({ type: step.conclusion === 'failure' ? 'step.failure' : 'step.success', conclusion: step.conclusion, repository, runId, jobId: job.id, step: step.name, url, timestamp: new Date().toISOString() });
     }
-    if (job.conclusion) add({ type: 'job.completed', conclusion: job.conclusion, repository, runId, jobId: job.id, url, timestamp: new Date().toISOString() });
+    if (job.conclusion && job.status === 'completed') add({ type: 'job.completed', conclusion: job.conclusion, repository, runId, jobId: job.id, url, timestamp: new Date().toISOString() });
   }
   return events;
 }
