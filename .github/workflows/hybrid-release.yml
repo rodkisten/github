@@ -1,0 +1,185 @@
+name: 🚀 Reusable Hybrid Release
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        default: auto
+      initial-version:
+        type: string
+        default: 1.0.0
+      version:
+        type: string
+        default: ''
+      assets:
+        type: string
+        default: ''
+      build-command:
+        type: string
+        default: ''
+      dry-run:
+        type: boolean
+        default: false
+    secrets:
+      BOT_APP_ID:
+        required: true
+      BOT_PRIVATE_KEY:
+        required: true
+    outputs:
+      tag:
+        description: Published or planned tag
+        value: ${{ jobs.release.outputs.tag }}
+      published:
+        description: Whether a release was published
+        value: ${{ jobs.release.outputs.published }}
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: auto, major, minor, patch, or exact
+        type: choice
+        options: [auto, major, minor, patch, exact]
+        default: auto
+      version:
+        description: Exact version for exact mode
+        type: string
+        default: ''
+      dry-run:
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: hybrid-release-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - name: 🤖 GitHub App installation token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 🏗️ Optional build
+        if: inputs.build-command != ''
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -euo pipefail -c "$BUILD_COMMAND"
+      - name: 🏷️ Resolve and publish
+        id: publish
+        uses: actions/github-script@v8
+        env:
+          MODE: ${{ inputs.mode || 'auto' }}
+          EXACT_VERSION: ${{ inputs.version || '' }}
+          INITIAL_VERSION: ${{ inputs.initial-version || '1.0.0' }}
+          ASSETS: ${{ inputs.assets || '' }}
+          DRY_RUN: ${{ inputs.dry-run || false }}
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const { owner, repo } = context.repo;
+            const mode = process.env.MODE;
+            const parse = value => {
+              const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(value);
+              return match ? match.slice(1).map(Number) : null;
+            };
+            if (!['auto','major','minor','patch','exact'].includes(mode)) throw new Error('Invalid release mode: ' + mode);
+            const initial = parse(process.env.INITIAL_VERSION);
+            if (!initial) throw new Error('Invalid initial-version');
+            const tags = await github.paginate(github.rest.repos.listTags, { owner, repo, per_page: 100 });
+            const versions = tags.map(t => ({ tag: t.name, version: parse(t.name) })).filter(t => t.version);
+            versions.sort((a,b) => {
+              for (let i=0;i<3;i++) if (a.version[i] !== b.version[i]) return b.version[i]-a.version[i];
+              return 0;
+            });
+            const latest = versions[0];
+            let next;
+            if (mode === 'exact') {
+              next = parse(process.env.EXACT_VERSION);
+              if (!next) throw new Error('exact mode requires a valid version');
+            } else if (!latest) {
+              next = initial;
+            } else if (mode === 'auto') {
+              const comparison = await github.rest.repos.compareCommits({ owner, repo, base: latest.tag, head: context.sha });
+              if (comparison.data.status === 'behind' || comparison.data.status === 'diverged') throw new Error('Release SHA is not ahead of latest tag');
+              const commits = comparison.data.commits;
+              if (comparison.data.total_commits > commits.length) throw new Error('Commit comparison truncated; refusing to guess version');
+              let bump = 0;
+              for (const commit of commits) {
+                const message = commit.commit.message;
+                if (/BREAKING CHANGE:|^[a-z]+(?:\([^)]*\))?!:/m.test(message)) bump = Math.max(bump, 3);
+                else if (/^feat(?:\([^)]*\))?:/m.test(message)) bump = Math.max(bump, 2);
+                else if (/^fix(?:\([^)]*\))?:/m.test(message)) bump = Math.max(bump, 1);
+              }
+              if (!bump) {
+                core.info('No releasable commits');
+                core.setOutput('published', 'false');
+                return;
+              }
+              next = [...latest.version];
+              if (bump === 3) next = [next[0]+1,0,0];
+              else if (bump === 2) next = [next[0],next[1]+1,0];
+              else next[2]++;
+            } else {
+              next = [...latest.version];
+              if (mode === 'major') next = [next[0]+1,0,0];
+              if (mode === 'minor') next = [next[0],next[1]+1,0];
+              if (mode === 'patch') next[2]++;
+            }
+            const tag = 'v' + next.join('.');
+            core.setOutput('tag', tag);
+            const existing = tags.find(t => t.name === tag);
+            if (existing && existing.commit.sha !== context.sha) throw new Error(tag + ' already exists on another commit');
+            const { data: releases } = await github.rest.repos.listReleases({ owner, repo, per_page: 100 });
+            const published = releases.find(r => r.tag_name === tag);
+            if (published) {
+              core.info('Release already exists: ' + published.html_url);
+              core.setOutput('published', 'false');
+              return;
+            }
+            if (process.env.DRY_RUN === 'true') {
+              core.summary.addHeading('🔎 Release preview').addRaw(tag + ' at ' + context.sha).write();
+              core.setOutput('published', 'false');
+              return;
+            }
+            if (!existing) await github.rest.git.createRef({ owner, repo, ref: 'refs/tags/' + tag, sha: context.sha });
+            const release = await github.rest.repos.createRelease({
+              owner, repo, tag_name: tag, target_commitish: context.sha,
+              name: tag, generate_release_notes: true, draft: false, prerelease: false
+            });
+            const patterns = process.env.ASSETS.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+            const files = new Set();
+            const walk = dir => {
+              if (!fs.existsSync(dir)) return;
+              for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
+                const file = path.join(dir,entry.name);
+                if (entry.isDirectory()) walk(file);
+                else if (entry.isFile()) files.add(file.replaceAll('\\','/'));
+              }
+            };
+            if (patterns.length) walk('.');
+            const { minimatch } = require('minimatch');
+            
+            for (const file of files) {
+              if (!patterns.some(pattern=>minimatch(file.replace(/^\.\//,''),pattern,{dot:true}))) continue;
+              await github.rest.repos.uploadReleaseAsset({
+                owner, repo, release_id: release.data.id, name: path.basename(file),
+                data: fs.readFileSync(file), headers: { 'content-type': 'application/octet-stream' }
+              });
+            }
+            core.setOutput('published', 'true');
+            core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
