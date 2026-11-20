@@ -85,4 +85,4 @@ async function main(): Promise<void> {
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   if (failed.length) core.setFailed(failed.length+' formatting/lint checks failed');
 }
-if (process.env.GITHUB_ACTION_PATH?.endsWith('/format')) main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
+main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
