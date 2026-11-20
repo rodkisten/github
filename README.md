@@ -202,3 +202,7 @@ The Actions Console document is a proposal; notification hooks are not implement
 - `actions/console-run`: instrumented Bash command runner with exit-code, duration and job summary.
 
 These actions require a published `dist` build after merge. Relay delivery and automatic step injection are not implemented.
+
+### Validation gate
+
+The PR includes `.github/workflows/validate-console.yml` for Node 24 typecheck, unit tests, bundle generation and artifact checks. Do not merge until the GitHub check run is green. Hybrid release uploads assets to a draft before publication.
