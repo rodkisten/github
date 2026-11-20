@@ -161,36 +161,14 @@ jobs:
               owner, repo, tag_name: tag, target_commitish: context.sha,
               name: tag, generate_release_notes: true, draft: false, prerelease: false
             });
-            const patterns = process.env.ASSETS.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-            const files = new Set();
-            const walk = dir => {
-              if (!fs.existsSync(dir)) return;
-              for (const entry of fs.readdirSync(dir, {withFileTypes:true})) {
-                const file = path.join(dir,entry.name);
-                if (entry.isDirectory()) walk(file);
-                else if (entry.isFile()) files.add(file.replaceAll('\\','/'));
-              }
-            };
-            if (patterns.length) walk('.');
-            const matches = (file, pattern) => { const escape = x => x.replace(/[.+^${}()|[\]\\]/g, '\\const { minimatch } = require('minimatch');'); const regex = '^' + pattern.split('**').map(part => part.split('*').map(escape).join('[^/]*')).join('.*') + '
-            
+            const patterns = process.env.ASSETS.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            const files = [...new Set(patterns.flatMap(pattern => [...fs.globSync(pattern)]))].sort();
             for (const file of files) {
-              if (!patterns.some(pattern=>matches(file.replace(/^\.\//,''),pattern))) continue;
+              if (!fs.statSync(file).isFile()) continue;
               await github.rest.repos.uploadReleaseAsset({
                 owner, repo, release_id: release.data.id, name: path.basename(file),
                 data: fs.readFileSync(file), headers: { 'content-type': 'application/octet-stream' }
               });
             }
             core.setOutput('published', 'true');
-            core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
-; return new RegExp(regex).test(file); };
-            
-            for (const file of files) {
-              if (!patterns.some(pattern=>minimatch(file.replace(/^\.\//,''),pattern,{dot:true}))) continue;
-              await github.rest.repos.uploadReleaseAsset({
-                owner, repo, release_id: release.data.id, name: path.basename(file),
-                data: fs.readFileSync(file), headers: { 'content-type': 'application/octet-stream' }
-              });
-            }
-            core.setOutput('published', 'true');
-            core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
+            await core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
