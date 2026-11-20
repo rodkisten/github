@@ -18,7 +18,7 @@ export function reportMarkdown(results: Result[], changed: string[], mode: strin
     ...results.filter(x => x.status !== 'ok').map(x => '<details><summary>' + (x.status === 'failed' ? '❌' : '⚠️') + ' ' + x.tool + '</summary>\n\n```text\n' + (x.detail || x.status).replaceAll('```', '') + '\n```\n</details>'), '',
     '_Updated by Rod Actions Console. This comment is edited in place._'].join('\n');
 }
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const token = core.getInput('github-token', { required: true });
   const pull = Number(core.getInput('pr-number', { required: true }));
   if (!Number.isSafeInteger(pull) || pull <= 0) throw new Error('Invalid PR number');
