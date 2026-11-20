@@ -200,3 +200,7 @@ npm run build
 - [ ] Relay notification transport and persistent deduplication
 
 **Current work:** [PR #10 · Universal Format + Console](https://github.com/rodkisten/github/pull/10). Features listed as in-progress are **not** available on a published release until merged and released.
+
+---
+
+<sub>Built with TypeScript, GitHub Actions and an unreasonable appreciation for readable CI logs. 🪄</sub>
