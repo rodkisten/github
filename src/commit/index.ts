@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { readFileSync } from 'node:fs';
 import { validateBranchName, validateChanges, type FileChange } from './validate.js';
 import { createAtomicCommit } from './operation.js';
 
@@ -13,7 +14,8 @@ async function main(): Promise<void> {
   validateBranchName(branch);
   validateBranchName(base);
   const message = core.getInput('message', { required: true });
-  const changes = JSON.parse(core.getInput('files', { required: true })) as FileChange[];
+  const filesPath = core.getInput('files-path');
+  const changes = JSON.parse(filesPath ? readFileSync(filesPath, 'utf8') : core.getInput('files', { required: true })) as FileChange[];
   validateChanges(changes);
 
   const result = await createAtomicCommit(octokit, {

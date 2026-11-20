@@ -1,0 +1,75 @@
+name: 🎨 Format PR
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        type: choice
+        options: [changed, all]
+        default: changed
+      mode:
+        type: choice
+        options: [check, fix]
+        default: check
+  pull_request:
+    paths:
+      - 'src/format/**'
+      - 'actions/format/**'
+      - 'src/console/**'
+      - '.github/workflows/format-pr.yml'
+      - 'tsdown.config.ts'
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck && npm test && npm run build
+      - name: 🔬 Verify standalone action bundles
+        run: node --input-type=module -e "import { readFileSync } from 'node:fs'; for (const name of ['format', 'format-report', 'commit']) { const code = readFileSync('dist/' + name + '.js', 'utf8'); if (/from [\u0027\u0022]\\.\\//.test(code)) throw new Error(name + ' imports a missing local chunk'); }"
+      - name: 🎨 Format source
+        id: format
+        uses: ./actions/format
+        with:
+          mode: ${{ inputs.mode || (github.event.pull_request.head.repo.full_name == github.repository && 'fix') || 'check' }}
+          scope: ${{ inputs.scope || 'changed' }}
+          base: origin/main
+          results-file: ${{ runner.temp }}/rod-format-results.json
+          commit-files-path: ${{ runner.temp }}/rod-format-commit.json
+      - name: 🤖 Authenticate Rod App for PR report
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+          permission-contents: write
+      - name: 📝 Commit formatter changes with Rod App
+        if: steps.app.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.format.outputs.changed-files != '[]'
+        uses: ./actions/commit
+        with:
+          token: ${{ steps.app.outputs.token }}
+          branch: ${{ github.event.pull_request.head.ref }}
+          message: ${{ steps.format.outputs.suggested-commit }}
+          files-path: ${{ runner.temp }}/rod-format-commit.json
+          author-name: ploocky[bot]
+          author-email: ploocky[bot]@users.noreply.github.com
+      - name: 📋 Update PR format report
+        if: always() && github.event_name == 'pull_request' && steps.format.outcome == 'success'
+        uses: ./actions/format-report
+        with:
+          github-token: ${{ github.token }}
+          pr-number: ${{ github.event.pull_request.number }}
+          results-file: ${{ runner.temp }}/rod-format-results.json
+          mode: ${{ inputs.mode || (github.event.pull_request.head.repo.full_name == github.repository && 'fix') || 'check' }}
+          scope: ${{ inputs.scope || 'changed' }}
