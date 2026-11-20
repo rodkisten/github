@@ -1,5 +1,7 @@
 import * as core from '@actions/core';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { execute } from './process.js';
+import { shellDialect, shellTools } from './shell.js';
 import { existsSync, appendFileSync } from 'node:fs';
 import { extname } from 'node:path';
 
@@ -12,7 +14,7 @@ const groups: Record<string, string[]> = {
   go: ['.go'],
   rust: ['.rs'],
   python: ['.py'],
-  shell: ['.sh','.bash'],
+  shell: ['.sh','.bash','.zsh'],
 };
 function git(args: string[]): string { return execFileSync('git', args, { encoding: 'utf8' }).trim(); }
 export function listFiles(scope: Scope, base: string): string[] {
@@ -23,19 +25,22 @@ export function listFiles(scope: Scope, base: string): string[] {
 }
 export function classify(file: string): string | undefined {
   const extension = extname(file).toLowerCase();
-  return Object.entries(groups).find(([, extensions]) => extensions.includes(extension))?.[0];
+  return shellDialect(file) ? 'shell' : Object.entries(groups).find(([, extensions]) => extensions.includes(extension))?.[0];
 }
-function run(tool: string, args: string[]): { ok: boolean; detail?: string } {
-  const result = spawnSync(tool, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  if (result.error) return { ok: false, detail: result.error.message };
-  return { ok: result.status === 0, detail: (result.stderr || result.stdout || '').slice(-2500) };
+function run(tool: string, args: string[]): { ok: boolean; detail?: string; missing: boolean } {
+  const result = execute(tool, args);
+  return { ok: result.ok, detail: (result.stderr || result.stdout).slice(-2500), missing: result.missing };
 }
 export function formatFiles(files: string[], mode: Mode, lint: boolean): Result[] {
   const results: Result[] = [];
   for (const [language, paths] of Object.entries(groups)) {
     const selected = files.filter(file => classify(file) === language);
     if (!selected.length) continue;
-    if (language === 'prettier') {
+    if (language === 'shell') {
+      for (const file of selected) for (const issue of shellTools(file, mode, lint)) {
+        results.push({ language: issue.dialect, tool: issue.tool, files: 1, status: issue.status, detail: issue.detail });
+      }
+    } else if (language === 'prettier') {
       const prettier = 'node_modules/.bin/prettier';
       if (!existsSync(prettier)) { results.push({ language, tool: 'prettier', files: selected.length, status: 'skipped', detail: 'Install repository dependencies first' }); continue; }
       const check = run(prettier, [mode === 'fix' ? '--write' : '--check', '--ignore-unknown', ...selected]);
@@ -49,14 +54,14 @@ export function formatFiles(files: string[], mode: Mode, lint: boolean): Result[
         }
       }
     } else {
-      const tool = { go: 'gofmt', rust: 'rustfmt', python: 'ruff', shell: 'shfmt' }[language]!;
+      const tool = { go: 'gofmt', rust: 'rustfmt', python: 'ruff' }[language]!;
       const args = language === 'go' ? (mode === 'fix' ? ['-w', ...selected] : ['-l', ...selected])
         : language === 'rust' ? (mode === 'fix' ? ['--emit','files', ...selected] : ['--check', ...selected])
         : language === 'python' ? (mode === 'fix' ? ['format', ...selected] : ['format','--check', ...selected])
-        : (mode === 'fix' ? ['-w', ...selected] : ['-d', ...selected]);
+        : [];
       const checked = run(tool, args);
       const ok = checked.ok && !(language === 'go' && mode === 'check' && checked.detail?.trim());
-      results.push({ language, tool, files: selected.length, status: checked.detail?.includes('ENOENT') ? 'skipped' : ok ? 'ok' : 'failed', detail: ok ? undefined : checked.detail });
+      results.push({ language, tool, files: selected.length, status: checked.missing ? 'skipped' : ok ? 'ok' : 'failed', detail: ok ? undefined : checked.detail });
     }
   }
   return results;
