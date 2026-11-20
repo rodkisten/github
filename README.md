@@ -170,7 +170,7 @@ See the [full input/output reference](docs/FORMAT.md#-inputs-and-outputs), inclu
 > Never pass an installation token to code from an untrusted fork. Automatic fixes and comments use GitHub App permissions only on trusted same-repository PRs. Always review generated changes.
 
 - Missing tools can currently be reported as **skipped**. This is not a strict coverage guarantee.
-- Large changes serialized into Action outputs may hit GitHub Actions output limits. Use a file-based transport before enabling broad monorepo auto-commit.
+- PR auto-commits use file-backed JSON payloads to avoid oversized Actions outputs.
 - Zsh gets `zsh -n`, **not** automatic formatting.
 - The Console collects notification candidates; Relay delivery is not implemented.
 - GitHub's `workflow_run` API is the reliable source for *completed* job outcomes, not a still-running step.
@@ -195,7 +195,7 @@ npm run build
 - [x] Universal format Action and Shell/Bash/Zsh checks in PR #10
 - [x] PR report and App auto-commit wiring in PR #10
 - [ ] Validate the latest PR #10 run end to end
-- [ ] Replace large JSON output transport with file-backed commits
+- [x] Replace large JSON output transport with file-backed commits
 - [ ] Strict missing-tool policy and Zsh-aware formatter
 - [ ] Relay notification transport and persistent deduplication
 
