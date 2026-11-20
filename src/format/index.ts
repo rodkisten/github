@@ -66,7 +66,7 @@ export function formatFiles(files: string[], mode: Mode, lint: boolean): Result[
   }
   return results;
 }
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const mode = core.getInput('mode') === 'fix' ? 'fix' : 'check';
   const scope = core.getInput('scope') === 'all' ? 'all' : 'changed';
   const base = core.getInput('base') || 'origin/main';
