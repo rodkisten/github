@@ -8,6 +8,15 @@ inputs:
     description: Optional repository override path
     required: false
     default: .github/rod-actions.yml
+  format-mode:
+    description: off, check or fix
+    default: 'off'
+  format-scope:
+    description: changed or all
+    default: changed
+  format-base:
+    description: Base ref for changed mode
+    default: origin/main
   report:
     description: Fetch workflow job and step conclusions
     required: false
