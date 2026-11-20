@@ -7,6 +7,6 @@ export default defineConfig({
   target: 'node24',
   outDir: 'dist',
   clean: true,
-  codeSplitting: false,
+  outputOptions: { codeSplitting: false },
   deps: { alwaysBundle: [/^@actions\//, /^yaml$/, /^picomatch$/] },
 });
