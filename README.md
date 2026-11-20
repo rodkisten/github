@@ -206,3 +206,7 @@ These actions require a published `dist` build after merge. Relay delivery and a
 ### Validation gate
 
 The PR includes `.github/workflows/validate-console.yml` for Node 24 typecheck, unit tests, bundle generation and artifact checks. Do not merge until the GitHub check run is green. Hybrid release uploads assets to a draft before publication.
+
+### 🎨 Universal Format
+
+The independent `actions/format` handles changed/all files and check/fix modes across Prettier, ESLint, Go, Rust, Python and shell. The Console accepts `format-mode`, `format-scope`, and `format-base`. See [format documentation](docs/FORMAT.md).
