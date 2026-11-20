@@ -1,27 +1,4 @@
-import { createRequire } from "node:module";
-// \0rolldown/runtime.js
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod, mod.exports), cb = null), mod.exports);
-var __copyProps = (to, from, except, desc) => {
-	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
-		key = keys[i];
-		if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {
-			get: ((k) => from[k]).bind(null, key),
-			enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
-		});
-	}
-	return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(isNodeMode || !mod || !mod.__esModule || !__hasOwnProp.call(mod, "default") ? __defProp(target, "default", {
-	value: mod,
-	enumerable: true
-}) : target, mod));
-var __require = /* #__PURE__ */ (() => createRequire(import.meta.url))();
+import { n as __require, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
 // node_modules/@actions/core/lib/utils.js
 var require_utils$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
@@ -18946,4 +18923,4 @@ var require_core = /* @__PURE__ */ __commonJSMin(((exports, module, this$1) => {
 	*/
 	exports.platform = __importStar(require_platform());
 }));
-export { __toESM as a, __require as i, require_lib as n, __commonJSMin as r, require_core as t };
+export { require_lib as n, require_core as t };

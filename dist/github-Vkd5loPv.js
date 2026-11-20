@@ -1,4 +1,5 @@
-import { i as __require, n as require_lib, r as __commonJSMin } from "./core-B1pz-eBj.js";
+import { n as __require, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
+import { n as require_lib } from "./core-CD-a993g.js";
 // node_modules/@actions/github/lib/context.js
 var require_context = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
