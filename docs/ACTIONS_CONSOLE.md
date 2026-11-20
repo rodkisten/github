@@ -53,3 +53,31 @@ release:
 
 ## Security
 No secrets in config, no arbitrary untrusted hooks in privileged jobs, no write tokens in PR builds, and webhook signature verification where applicable. Respect existing `notify.yml` repository settings by merging rather than replacing them. Prevent recursive notifications from the notification workflow itself.
+
+## Implemented action (opt-in)
+
+The Action is at `actions/console/action.yml`, bundled from `src/console/index.ts`. It resolves defaults and optional overrides, and in report mode reads job/step conclusions using the GitHub Actions API. The reporter writes a summary and optionally a JSON event file; it **does not send webhooks**.
+
+```yaml
+permissions:
+  contents: read
+  actions: read
+steps:
+  - uses: actions/checkout@v4
+  - name: Checkout shared config
+    uses: actions/checkout@v4
+    with:
+      repository: rodkisten/github
+      path: .rod-actions
+  - name: Collect console events
+    if: always()
+    uses: rodkisten/github/actions/console@main
+    with:
+      defaults: .rod-actions/config/rod-actions.yml
+      config: .github/rod-actions.yml
+      report: 'true'
+      github-token: ${{ github.token }}
+      events-file: rod-events.json
+```
+
+**Deployment caveat:** The `@main` reference is usable only after the PR is merged and the compiled `dist/console.js` is published. Jobs API results for the currently running job can be incomplete; for authoritative final conclusions use a separate `workflow_run` reporter after completion. Never report uncompleted steps as successful.
