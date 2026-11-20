@@ -10,6 +10,9 @@ inputs:
   base:
     description: Git base ref for changed scope
     default: origin/main
+  commit-files-path:
+    description: Write JSON commit payload to this local file instead of an Actions output
+    required: false
   results-file:
     description: Write JSON report to this local path
     required: false
@@ -17,8 +20,6 @@ inputs:
     description: Run ESLint for JS/TS if available
     default: 'true'
 outputs:
-  commit-files:
-    description: JSON file changes compatible with Rod App commit action
   changed-files:
     description: JSON array of modified paths
   result-json:
