@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import { execFileSync } from 'node:child_process';
 import { execute } from './process.js';
 import { shellDialect, shellTools } from './shell.js';
-import { existsSync, appendFileSync } from 'node:fs';
+import { existsSync, appendFileSync, writeFileSync } from 'node:fs';
 import { extname } from 'node:path';
 
 type Mode = 'check' | 'fix';
@@ -77,6 +77,8 @@ async function main(): Promise<void> {
   const skipped = results.filter(result => result.status === 'skipped');
   core.setOutput('changed-files', JSON.stringify(changed));
   core.setOutput('result-json', JSON.stringify(results));
+  const resultsFile = core.getInput('results-file');
+  if (resultsFile) writeFileSync(resultsFile, JSON.stringify(results, null, 2));
   core.setOutput('suggested-commit', 'style(format): normalize ' + (changed.length || files.length) + ' files [skip ci]');
   const summary = ['## 🎨 Rod Format · ' + mode.toUpperCase(), '', '| Tool | Files | Result |', '|---|---:|---|', ...results.map(r => '| '+r.tool+' | '+r.files+' | '+r.status+' |'), '', '**Scope:** '+scope+' · **Selected:** '+files.length+' · **Changed:** '+changed.length, '', 'Suggested commit: `style(format): normalize '+(changed.length || files.length)+' files [skip ci]`', '', ...failed.map(r => '### ❌ '+r.tool+'\n\n```text\n'+(r.detail||'Failed')+'\n```'), ...skipped.map(r => '⚠️ '+r.tool+': '+(r.detail||'Unavailable')), ''].join('\n');
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
