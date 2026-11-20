@@ -17,6 +17,14 @@ async function main(): Promise<void> {
   const config = resolveConfig(defaults, override);
   core.setOutput('notify-enabled', String(config.notify.enabled));
   core.setOutput('release-mode', config.release.mode);
+  const formatMode = core.getInput('format-mode');
+  if (formatMode && formatMode !== 'off') {
+    const { listFiles, formatFiles } = await import('../format/index.js');
+    const scope = core.getInput('format-scope') === 'all' ? 'all' : 'changed';
+    const results = formatFiles(listFiles(scope, core.getInput('format-base') || 'origin/main'), formatMode === 'fix' ? 'fix' : 'check', true);
+    core.setOutput('format-results', JSON.stringify(results));
+    if (results.some(result => result.status === 'failed')) core.setFailed('Formatting/lint issues detected');
+  }
   const report = core.getInput('report') === 'true';
   if (!report) return;
   const token = core.getInput('github-token');
