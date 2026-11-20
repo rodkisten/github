@@ -205,11 +205,12 @@ The `actions/format-report` Action searches for a comment containing `<!-- rod-f
 | `base` | No | `origin/main` | Git comparison ref |
 | `lint` | No | `true` | Enable supported lint tools |
 | `results-file` | No | none | Path for structured JSON report |
+| `commit-files-path` | No | none | Local JSON file containing formatted file changes for App commit |
 
 | Output | Format | Use |
 | :-- | :-- | :-- |
 | `changed-files` | JSON array | Files changed in the working tree |
-| `commit-files` | JSON array | `{path,content}` payload for `actions/commit` |
+| `commit-files-path` | Local input file | Use `actions/commit` input `files-path` for large payloads |
 | `result-json` | JSON array | Per-tool status |
 | `suggested-commit` | String | Conventional Commit template |
 
@@ -255,7 +256,7 @@ style(format): normalize 5 files [skip ci]
 ## 🛡️ Security and permissions
 
 - Read-only checks need `contents: read`.
-- The PR reporter requires an App token with `issues: write`.
+- The PR reporter uses the workflow `GITHUB_TOKEN` with `issues: write`; App token remains dedicated to `contents: write` for commits.
 - App commits require `contents: write` and a trusted same-repository branch.
 - Do not run privileged fix/commit steps on fork code.
 - Do not force-push or overwrite a branch after another actor has updated it.
