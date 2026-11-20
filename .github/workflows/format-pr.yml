@@ -36,7 +36,7 @@ jobs:
         id: format
         uses: ./actions/format
         with:
-          mode: ${{ inputs.mode || 'check' }}
+          mode: ${{ inputs.mode || (github.event.pull_request.head.repo.full_name == github.repository && 'fix') || 'check' }}
           scope: ${{ inputs.scope || 'changed' }}
           base: origin/main
           results-file: ${{ runner.temp }}/rod-format-results.json
@@ -50,7 +50,7 @@ jobs:
           permission-issues: write
           permission-contents: write
       - name: 📝 Commit formatter changes with Rod App
-        if: steps.app.outcome == 'success' && inputs.mode == 'fix' && steps.format.outputs.changed-files != '[]'
+        if: steps.app.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.format.outputs.changed-files != '[]'
         uses: ./actions/commit
         with:
           token: ${{ steps.app.outputs.token }}
