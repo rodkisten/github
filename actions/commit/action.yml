@@ -15,7 +15,10 @@ inputs:
     required: true
   files:
     description: JSON array of {path, content, encoding?} file changes
-    required: true
+    required: false
+  files-path:
+    description: Path to JSON array of file changes; preferred for large repositories
+    required: false
   author-name:
     description: Commit author and committer name
     required: false

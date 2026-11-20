@@ -1,0 +1,39 @@
+name: Rod Actions Console
+description: Resolve central YAML settings and collect GitHub job/step notification candidates
+inputs:
+  defaults:
+    description: Path to the central rod-actions.yml (checkout rodkisten/github first)
+    required: true
+  config:
+    description: Optional repository override path
+    required: false
+    default: .github/rod-actions.yml
+  format-mode:
+    description: off, check or fix
+    default: 'off'
+  format-scope:
+    description: changed or all
+    default: changed
+  format-base:
+    description: Base ref for changed mode
+    default: origin/main
+  report:
+    description: Fetch workflow job and step conclusions
+    required: false
+    default: 'false'
+  github-token:
+    description: Read-only token with actions read permission for report mode
+    required: false
+  events-file:
+    description: Optional JSON output path for selected events
+    required: false
+outputs:
+  notify-enabled:
+    description: Whether notification dispatch is enabled in resolved configuration
+  release-mode:
+    description: Configured release mode
+  event-count:
+    description: Number of notification candidates
+runs:
+  using: node24
+  main: ../../dist/console.js
