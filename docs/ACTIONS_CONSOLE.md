@@ -1,6 +1,6 @@
-# 🧩 Rod Actions Console · Architecture proposal
+# 🧩 Rod Actions Console · Configuration & usage
 
-This is a design proposal, not an enabled notification system.
+The Console has implemented YAML resolution, optional format execution and read-only GitHub event collection. Relay delivery and global hooks remain a design proposal.
 
 ## Goal
 Centralized typed configuration and event hooks shared by CI, release, deploy, PR and notification actions.
@@ -93,3 +93,36 @@ steps:
 ```
 
 The runner executes a Bash command in a child process, records duration and exit status, and fails the action when the command fails. This is explicit instrumentation, not a global hook. It does not intercept third-party `uses:` steps or send Relay notifications. The action is available after merge and publication of `dist/console-run.js`.
+
+
+## 🎨 Format integration
+
+The Console reuses the shared TypeScript formatter implementation, rather than spawning a separate shell script. Formatting and event reporting can be enabled independently.
+
+| Input | Default | Meaning |
+| :-- | :-- | :-- |
+| `format-mode` | `off` | `off`, `check`, `fix` |
+| `format-scope` | `changed` | Changed files or entire repository |
+| `format-base` | `origin/main` | Comparison base |
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: actions/checkout@v4
+  with:
+    repository: rodkisten/github
+    path: .rod-actions
+- uses: rodkisten/github/actions/console@main
+  with:
+    defaults: .rod-actions/config/rod-actions.yml
+    format-mode: check
+    format-scope: changed
+    format-base: origin/main
+    report: 'false'
+```
+
+> [!NOTE]
+> The standalone `actions/format` provides richer JSON results, a GitHub job summary and suggested commit. The Console currently exposes `format-results` programmatically, but this output is not yet declared in `actions/console/action.yml`; use the standalone Action for stable cross-step outputs.
+
+See [🎨 Complete formatter guide](FORMAT.md) for supported languages, Shell/Bash/Zsh rules, GitHub App commits, report comments and limitations.
