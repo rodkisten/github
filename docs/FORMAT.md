@@ -28,3 +28,11 @@ The action only uses tools already installed in the caller's runner. Missing too
 Use the separate PR workflow for GitHub App commits and sticky comments. `check` reports problems without modifying files; `fix` changes files in the working tree. `all` uses tracked files. `changed` uses the merge-base with the configured ref.
 
 Security: run fixes only on trusted branches, not untrusted fork PRs with privileged tokens.
+
+## Shell dialects
+
+- Bash (`.bash`, `.bashrc`, `.bash_profile`, Bash shebang): `shfmt -ln bash`, `shellcheck -s bash`, `bash -n`.
+- POSIX shell (`.sh`, `sh`/`dash` shebang): `shfmt -ln posix`, `shellcheck -s sh`, `sh -n`.
+- Zsh (`.zsh`, `.zshrc`, `.zprofile`, Zsh shebang): `zsh -n` syntax check. **Zsh autoformat is not implemented**: shfmt and ShellCheck are not Zsh parsers, so passing Zsh code to them would be unsafe. Add a Zsh-compatible formatter before enabling automatic rewrites.
+
+Tool invocations use shared TypeScript `execute()` utility. Missing tools are reported as skipped, not treated as success; CI should explicitly enforce a strict policy before merge.
