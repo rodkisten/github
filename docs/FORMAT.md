@@ -36,3 +36,9 @@ Security: run fixes only on trusted branches, not untrusted fork PRs with privil
 - Zsh (`.zsh`, `.zshrc`, `.zprofile`, Zsh shebang): `zsh -n` syntax check. **Zsh autoformat is not implemented**: shfmt and ShellCheck are not Zsh parsers, so passing Zsh code to them would be unsafe. Add a Zsh-compatible formatter before enabling automatic rewrites.
 
 Tool invocations use shared TypeScript `execute()` utility. Missing tools are reported as skipped, not treated as success; CI should explicitly enforce a strict policy before merge.
+
+## GitHub App PR automation
+
+For same-repository PRs, `.github/workflows/format-pr.yml` selects `fix`, prepares JSON changes, and invokes the existing `actions/commit` Git Database API action with the `ploocky[bot]` identity. The `actions/format-report` action uses an App token to create or update a single marked PR comment with tool outcomes, changed files and a conventional commit template. Fork PRs run in check mode and are never granted the App token.
+
+**Validation:** CI must pass on the final SHA. The GitHub App credentials must be configured as `BOT_APP_ID` and `BOT_PRIVATE_KEY`. Large formatted diffs may exceed GitHub Actions output limits; file-backed payload transport should be implemented before broad monorepo rollout.
