@@ -1,70 +1,181 @@
-# 🦾 Rod GitHub Automation
+# 🦾 Rod Actions
+> **One toolbox. Many repositories. Fewer YAML jungles.** A TypeScript/Node 24 collection of reusable GitHub Actions, CI workflows, release tooling and the Rod Console.
 
-> 🧰 One shared toolbox for CI/CD across Rod's repositories. Less copy-paste, more shipping.
+[![TypeScript](https://img.shields.io/badge/TypeScript-Node%2024-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-2088ff?logo=githubactions&logoColor=white)](https://github.com/rodkisten/github/actions)
+[![Release](https://img.shields.io/github/v/release/rodkisten/github?label=release)](https://github.com/rodkisten/github/releases)
+[![License](https://img.shields.io/badge/usage-internal%20toolbox-64748b)](docs/ARCHITECTURE.md)
 
-## 🧭 Table of contents
-- [🚀 Quick start](#-quick-start)
-- [🧩 What's inside](#-whats-inside)
-- [🗺️ Architecture](#️-architecture)
-- [📚 Recipes](#-recipes)
-- [🛡️ Security and releases](#️-security-and-releases)
-- [🧪 Validation](#-validation)
-- [🚧 Roadmap](#-roadmap)
-- [🚀 Release pipeline](#-release-pipeline)
-- [🌈 rodlog integration](#-rodlog-integration)
-- [🤖 GitHub App automation](#-github-app-automation)
+[**🚀 Start here**](#-quick-start) · [**🎨 Format & lint**](docs/FORMAT.md) · [**🧩 Console**](docs/ACTIONS_CONSOLE.md) · [**🏷️ Releases**](docs/HYBRID_RELEASE.md) · [**🤖 GitHub App**](docs/USAGE.md)
+
+---
+
+## ✨ At a glance
+
+| Feature | What you get | Guide |
+| :-- | :-- | :-- |
+| 🎨 **Universal format** | Check or fix changed files or the whole repository, language-aware | [Format & lint](docs/FORMAT.md) |
+| 🐚 **Shell quality** | Bash/POSIX shfmt + ShellCheck + syntax; Zsh syntax validation | [Shell matrix](docs/FORMAT.md#-language-support) |
+| 🧩 **Actions Console** | Central configuration, format invocation, job/step event collection | [Console](docs/ACTIONS_CONSOLE.md) |
+| 🤖 **App-powered changes** | Atomic commits and PR creation with short-lived GitHub App tokens | [Usage](docs/USAGE.md) |
+| 🧭 **Path-aware CI** | Run only affected groups with reusable filters and matrix | [CI architecture](docs/ARCHITECTURE.md) |
+| 🏷️ **Hybrid releases** | Automatic Conventional Commits or manual SemVer bump | [Hybrid release](docs/HYBRID_RELEASE.md) |
+| 🌈 **rodlog** | Readable build, test and release logs | [rodlog](docs/RODLOG.md) |
+
+<details>
+<summary><strong>📚 Complete documentation index</strong></summary>
+
+- [Universal format: modes, languages, inputs, outputs, PR comments and troubleshooting](docs/FORMAT.md)
+- [Actions Console: configuration, hooks and formatting](docs/ACTIONS_CONSOLE.md)
+- [Hybrid releases and versioning](docs/HYBRID_RELEASE.md)
+- [Reusable workflow examples](docs/USAGE.md)
+- [Architecture and security](docs/ARCHITECTURE.md)
+- [Releasing this repository](docs/RELEASING.md)
+- [rodlog integration](docs/RODLOG.md)
+
+</details>
 
 ## 🚀 Quick start
-Use a reusable workflow from your own repository:
+
+> [!IMPORTANT]
+> For a consuming repository, use a **released tag or immutable commit SHA** after the action bundles have been published. The `@main` examples below track ongoing development and can change without notice.
+
+### 1. Run format checks on changed files
 
 ```yaml
-name: CI
+name: 🎨 Format
 on:
   pull_request:
-  push:
-    branches: [main]
+permissions:
+  contents: read
 jobs:
-  ci:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - uses: rodkisten/github/actions/format@main
+        id: format
+        with:
+          mode: check
+          scope: changed
+          base: origin/main
+          lint: 'true'
+```
+
+> [!NOTE]
+> This Action uses tools already installed on the runner. Install the formatter(s) your project needs before invoking it. Zsh formatting is **not** supported; Zsh syntax checking is.
+
+### 2. Fix the entire repository
+
+```yaml
+- uses: rodkisten/github/actions/format@main
+  id: format
+  with:
+    mode: fix
+    scope: all
+    lint: 'true'
+```
+
+The Action changes the working tree. It does **not** push automatically. See [GitHub App auto-commit and PR reporting](docs/FORMAT.md#-automatic-pr-workflow) for the separate, privileged workflow.
+
+### 3. Use centralized Node CI
+
+```yaml
+name: 🧪 CI
+on:
+  pull_request:
+jobs:
+  verify:
     uses: rodkisten/github/.github/workflows/node-ci.yml@main
     with:
       node-version: '24'
-      test-command: npm run test:runtime
+      test-command: npm test
       build-command: npm run build
 ```
 
-Use `@main` for shared workflows and actions. Changes on main take effect immediately for consumers; validate CI before merging.
+### 4. Invoke the Console
 
-## 🧩 What's inside
-| 🧱 Component | 🎯 Purpose |
-| --- | --- |
-| `actions/app-token` | Short-lived GitHub App token |
-| `actions/skip-ci` | Optional expensive-job skip decision |
-| `actions/setup-node` | Node and npm cache |
-| `actions/ci-summary` | Markdown job summary |
-| `actions/create-pr` | Create or update pull requests using a GitHub App token |
-| `actions/commit` | Atomic multi-file commits through the Git Database API |
-| `actions/node-ci` | Run configurable Node test/build commands with summaries |
-| `workflows/node-ci.yml` | Reusable Node test/build job |
-| `workflows/paths-filter.yml` | Central per-repository path filters and resolved command matrix |\n| `workflows/filtered-ci.yml` | Dynamic parallel CI matrix from matched filters |
-| `config/paths.yml` | Shared glob rules, task commands and working directories per filter |
-
-## 🗺️ Architecture
-```text
-Repository workflow (events and permissions)
-  ├── shared paths-filter → selected jobs
-  └── shared node-ci → setup-node → tests/build → summary
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/checkout@v4
+  with:
+    repository: rodkisten/github
+    path: .rod-actions
+- uses: rodkisten/github/actions/console@main
+  with:
+    defaults: .rod-actions/config/rod-actions.yml
+    format-mode: check
+    format-scope: changed
+    format-base: origin/main
 ```
 
-## 📚 Recipes
-- [🧪 Node CI, 🔐 GitHub App, ⏭️ Skip CI](docs/USAGE.md)
-- [🏗️ Architecture and rollout checklist](docs/ARCHITECTURE.md)
+## 🧱 Action catalog
 
-## 🛡️ Security and releases
-Use least-privilege permissions. Never expose App tokens to untrusted PR code. Pin reusable actions to reviewed tags or immutable SHAs. GitHub events still need local caller workflows.
+| Action | Purpose | Notes |
+| :-- | :-- | :-- |
+| `actions/format` | Format and lint | `check/fix`, `changed/all` |
+| `actions/format-report` | Sticky PR summary | GitHub App token required |
+| `actions/console` | Resolve config, format and collect events | Read-only reporter |
+| `actions/console-run` | Instrument command execution | Explicit Bash runner |
+| `actions/app-token` | Mint installation token | Least privilege |
+| `actions/commit` | Atomic multi-file commit | Git Database API |
+| `actions/create-pr` | Create/update PR | Reuses open PR |
+| `actions/paths-filter` | Discover affected paths | YAML and glob |
+| `actions/node-ci` | Execute Node checks | Configurable |
+| `actions/ci-summary` | Markdown summary | GitHub job summary |
+| `actions/setup-node` | Node bootstrap | Shared |
+| `actions/setup-rodlog` | Install rodlog | Structured logs |
+| `actions/skip-ci` | Skip decision | Opt-in |
 
-## 🧪 Validation
+## 🗺️ Architecture
 
-All executable action logic is TypeScript on Node 24. Run the same checks used by CI:
+```mermaid
+flowchart TD
+  A[Repository PR or manual dispatch] --> B{Changed or all?}
+  B --> C[Detect files and languages]
+  C --> D[Universal Format]
+  D --> E[Prettier / ESLint]
+  D --> F[gofmt / rustfmt / Ruff]
+  D --> G[shfmt / ShellCheck / Zsh]
+  E --> H[JSON results]
+  F --> H
+  G --> H
+  H --> I[GitHub job summary]
+  H --> J[GitHub App PR report]
+  H --> K{Trusted PR and fix?}
+  K -->|Yes| L[Atomic App commit]
+  K -->|No| M[Read-only result]
+```
+
+## 🎛️ Modes
+
+| Input | Choices | Default | Behavior |
+| :-- | :-- | :-- | :-- |
+| `mode` | `check`, `fix` | `check` | Verify only or rewrite |
+| `scope` | `changed`, `all` | `changed` | Diff from base or tracked repository |
+| `base` | Git ref | `origin/main` | Comparison reference |
+| `lint` | `true`, `false` | `true` | Additional lint where supported |
+
+See the [full input/output reference](docs/FORMAT.md#-inputs-and-outputs), including `results-file`, `commit-files` and `suggested-commit`.
+
+## 🛡️ Safety and limitations
+
+> [!WARNING]
+> Never pass an installation token to code from an untrusted fork. Automatic fixes and comments use GitHub App permissions only on trusted same-repository PRs. Always review generated changes.
+
+- Missing tools can currently be reported as **skipped**. This is not a strict coverage guarantee.
+- Large changes serialized into Action outputs may hit GitHub Actions output limits. Use a file-based transport before enabling broad monorepo auto-commit.
+- Zsh gets `zsh -n`, **not** automatic formatting.
+- The Console collects notification candidates; Relay delivery is not implemented.
+- GitHub's `workflow_run` API is the reliable source for *completed* job outcomes, not a still-running step.
+
+## 🧪 Development
 
 ```bash
 npm ci
@@ -73,140 +184,19 @@ npm test
 npm run build
 ```
 
-The validation workflow also smoke-tests the bundled actions. Do not remove or weaken Vitest coverage to get a green build.
+> [!TIP]
+> Prefer reusable TypeScript utilities and the existing GitHub App commit Action over custom shell scripts or duplicated API implementations.
 
-## 🚧 Roadmap
-- [x] 📦 Shared repository and initial actions
-- [x] 🧭 Documentation with navigation and examples
-- [x] 🧪 Initial policy tests
-- [x] 🟦 Migrate shared Node CI runner and CI summary to TypeScript / Node 24
-- [x] 🤖 Add GitHub App `create-pr` and atomic `commit` actions
-- [x] 🧪 Add Vitest coverage for PR helpers, file validation and branch validation
-- [x] 🧪 Add mocked Octokit integration tests for PR create/update and Git Database commit sequence
-- [x] 🧬 Support transitive dependencies between centralized path filters
-- [x] 🛟 Select every filter on a new-branch push when no comparison base exists
-- [x] 🗂️ Audit workflow inventory for userscripts-cf, photointel, shell and roteador
-- [x] 🧪 Validate every central repository filter config in Vitest
-- [x] 🧹 Add opt-in lint execution to the shared Node CI runner
-- [x] 🎛️ Resolve test/build/lint commands and working directories per filter
-- [x] 🧯 Support explicit `false` to disable individual tasks without falling back
-- [x] 🧪 Test per-filter overrides, task opt-outs and invalid command config
-- [x] 🏗️ Reusable filtered CI matrix with one job per matched filter and no-match handling\n- [x] 🏗️ Add reusable filtered CI matrix; matched filter is exposed as `ROD_CI_FILTER`
-- [x] 🧩 Extract API operations from Action entrypoints for deterministic dependency-injected tests
-- [ ] 🔬 Confirm latest workflow run and exercise App write permissions in an isolated test repository
-- [ ] 🔬 Validate filtered matrix workflow end-to-end on a consumer repository
-- [ ] 🚀 Migrate `shell/check.yml` to the central filtered CI workflow after release\n- [ ] 🔔 Shared notification and auto-fix actions
-- [ ] 🧹 Audit and migrate repositories, then remove redundant workflows
+## 🚦 Project status
 
-💬 [Conversation and decisions](https://chatgpt.com/share/6afec44b-5bf8-83ea-83d0-ae099d383b94?ogimg=plain)
+- [x] TypeScript Node 24 shared Actions
+- [x] Path-aware CI and atomic App commits
+- [x] Hybrid releases and central Console
+- [x] Universal format Action and Shell/Bash/Zsh checks in PR #10
+- [x] PR report and App auto-commit wiring in PR #10
+- [ ] Validate the latest PR #10 run end to end
+- [ ] Replace large JSON output transport with file-backed commits
+- [ ] Strict missing-tool policy and Zsh-aware formatter
+- [ ] Relay notification transport and persistent deduplication
 
-## 🟦 TypeScript / Node 24 migration
-
-The shared path-filter implementation now lives in `src/paths-filter/` and uses `@actions/core`, `@actions/github`, `yaml` and `picomatch`. The new JavaScript action is **not production-ready until `dist/paths-filter.js` is bundled and committed**.
-
-### 🧪 Developer commands
-
-```bash
-npm install
-npm run typecheck
-npm test
-npm run build
-```
-
-### 🧬 Action usage (after bundling and release)
-
-```yaml
-- uses: rodkisten/github/actions/paths-filter@main
-  id: changes
-  with:
-    token: ${{ github.token }}
-    config-ref: v1
-```
-
-Grant `contents: read` and `pull-requests: read` to the calling job. The action intentionally fails closed when GitHub's comparison results might be truncated. The existing Python dispatcher is legacy and will be replaced after the TypeScript action passes integration tests.
-
-## 🚀 Release pipeline
-
-Every push to `main` runs **one build, test and semantic-release workflow**. GitHub Releases and version tags are generated from Conventional Commits, while documentation-only commits run checks without creating a version. See [🚀 Release guide](docs/RELEASING.md) for the complete ToC, examples, permissions and troubleshooting.
-
-## 🌈 rodlog integration
-
-Our PR and release workflows install the verified Go-powered `rodlog` binary for TypeScript, Vitest and bundle diagnostics. See [🌈 rodlog guide](docs/RODLOG.md) for copy-paste recipes, output modes and security notes.
-
-## 🤖 GitHub App automation
-
-The shared actions accept a short-lived installation token created by `actions/app-token`. Keep permissions minimal and never expose the token to untrusted pull-request code.
-
-### Create or update a pull request
-
-```yaml
-- name: 🔐 Create installation token
-  id: app
-  uses: rodkisten/github/actions/app-token@main
-  with:
-    app-id: ${{ secrets.BOT_APP_ID }}
-    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-    permission-pull-requests: write
-    permission-contents: read
-- name: 🤖 Create or update PR
-  id: pr
-  uses: rodkisten/github/actions/create-pr@main
-  with:
-    token: ${{ steps.app.outputs.token }}
-    head: automation/update-lockfile
-    base: main
-    title: 'chore: update lockfile'
-    body: 'Automated dependency update.'
-    conversation-url: ${{ vars.CHATGPT_CONVERSATION_URL }}
-    labels: dependencies, automated
-    update-existing: 'true'
-```
-
-The action reuses an open PR for the same head/base by default. Outputs: `number`, `url`, `created`, `updated`. Its Octokit operation is extracted into `src/create-pr/operation.ts` and dependency-injected. Vitest covers create, update, duplicate prevention, labels and reviewers.
-
-### Commit multiple files atomically
-
-```yaml
-- name: 🔐 Create installation token
-  id: app
-  uses: rodkisten/github/actions/app-token@main
-  with:
-    app-id: ${{ secrets.BOT_APP_ID }}
-    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-    permission-contents: write
-- name: 📝 Commit generated documentation
-  uses: rodkisten/github/actions/commit@main
-  with:
-    token: ${{ steps.app.outputs.token }}
-    branch: automation/generated-docs
-    base: main
-    message: 'docs: refresh generated documentation [skip ci]'
-    files: |
-      [{"path":"docs/generated.md","content":"# Generated\\n"}]
-```
-
-The `files` input is a JSON array of `path`, `content`, and optional `encoding: base64`. The action creates one Git commit for all files, rejects unsafe/duplicate paths and updates refs without force. Outputs: `sha`, `branch`, `files`. The Git Database sequence is extracted into `src/commit/operation.ts`. Mocked Octokit integration tests verify branch creation, UTF-8/Base64 blob creation, a single tree/commit and a non-force ref update.
-
-🧪 **Integration coverage:** `tests/github-actions.test.ts` exercises the PR create/update paths and the Git Database API sequence with mocked Octokit calls. No real repository writes are performed by these tests.\n\n> 🚧 These examples target the published `v1` interface. New actions and inputs must be bundled, validated and released before production callers adopt them. Current development and rollout tracking lives in [PR #5](https://github.com/rodkisten/github/pull/5).
-
-## 🏷️ Hybrid releases and Actions Console
-
-- [🚀 Reusable hybrid release guide](docs/HYBRID_RELEASE.md)
-- [🧩 Centralized Actions Console and hooks architecture](docs/ACTIONS_CONSOLE.md)
-
-The Actions Console document is a proposal; notification hooks are not implemented yet.
-
-### 🧩 Console actions (experimental)
-
-- `actions/console`: typed YAML configuration and read-only GitHub job/step event collector.
-- `actions/console-run`: instrumented Bash command runner with exit-code, duration and job summary.
-
-These actions require a published `dist` build after merge. Relay delivery and automatic step injection are not implemented.
-
-### Validation gate
-
-The PR includes `.github/workflows/validate-console.yml` for Node 24 typecheck, unit tests, bundle generation and artifact checks. Do not merge until the GitHub check run is green. Hybrid release uploads assets to a draft before publication.
-
-### 🎨 Universal Format
-
-The independent `actions/format` handles changed/all files and check/fix modes across Prettier, ESLint, Go, Rust, Python and shell. The Console accepts `format-mode`, `format-scope`, and `format-base`. See [format documentation](docs/FORMAT.md).
+**Current work:** [PR #10 · Universal Format + Console](https://github.com/rodkisten/github/pull/10). Features listed as in-progress are **not** available on a published release until merged and released.
