@@ -81,3 +81,15 @@ steps:
 ```
 
 **Deployment caveat:** The `@main` reference is usable only after the PR is merged and the compiled `dist/console.js` is published. Jobs API results for the currently running job can be incomplete; for authoritative final conclusions use a separate `workflow_run` reporter after completion. Never report uncompleted steps as successful.
+
+## Instrumented shell commands
+
+```yaml
+- name: 🧩 Instrument build
+  uses: rodkisten/github/actions/console-run@main
+  with:
+    title: Build
+    command: npm run build
+```
+
+The runner executes a Bash command in a child process, records duration and exit status, and fails the action when the command fails. This is explicit instrumentation, not a global hook. It does not intercept third-party `uses:` steps or send Relay notifications. The action is available after merge and publication of `dist/console-run.js`.
