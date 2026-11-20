@@ -10,6 +10,9 @@ inputs:
   base:
     description: Git base ref for changed scope
     default: origin/main
+  results-file:
+    description: Write JSON report to this local path
+    required: false
   lint:
     description: Run ESLint for JS/TS if available
     default: 'true'
