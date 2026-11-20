@@ -172,7 +172,18 @@ jobs:
               }
             };
             if (patterns.length) walk('.');
-            const { minimatch } = require('minimatch');
+            const matches = (file, pattern) => { const escape = x => x.replace(/[.+^${}()|[\]\\]/g, '\\const { minimatch } = require('minimatch');'); const regex = '^' + pattern.split('**').map(part => part.split('*').map(escape).join('[^/]*')).join('.*') + '
+            
+            for (const file of files) {
+              if (!patterns.some(pattern=>matches(file.replace(/^\.\//,''),pattern))) continue;
+              await github.rest.repos.uploadReleaseAsset({
+                owner, repo, release_id: release.data.id, name: path.basename(file),
+                data: fs.readFileSync(file), headers: { 'content-type': 'application/octet-stream' }
+              });
+            }
+            core.setOutput('published', 'true');
+            core.summary.addHeading('🚀 Published ' + tag).addLink(release.data.html_url,release.data.html_url).write();
+; return new RegExp(regex).test(file); };
             
             for (const file of files) {
               if (!patterns.some(pattern=>minimatch(file.replace(/^\.\//,''),pattern,{dot:true}))) continue;
