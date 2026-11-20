@@ -33,4 +33,4 @@ async function main(): Promise<void> {
   else await octokit.rest.issues.createComment({ owner, repo, issue_number: pull, body });
   core.setOutput('comment-updated', 'true');
 }
-if (process.env.GITHUB_ACTION_PATH?.endsWith('/format-report')) main().catch(e => core.setFailed(e instanceof Error ? e.message : String(e)));
+main().catch(e => core.setFailed(e instanceof Error ? e.message : String(e)));
