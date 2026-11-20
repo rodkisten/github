@@ -1,7 +1,8 @@
 
 name: 🚀 Build · Test · Semantic Release
 
-run-name: 🚀 ${{ github.ref_name }} · ${{ github.event.head_commit.message || github.event_name }}
+run-name: "🚀 [${{ github.head_ref || github.ref_name }}] · ${{ github.event.pull_request.title || github.event.head_commit.message || (github.event_name == 'schedule' && 'Execução agendada') || format('Execução manual por @{0}', github.actor) }}"
+
 
 on:
   push:
