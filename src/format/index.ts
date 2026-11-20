@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import { execFileSync } from 'node:child_process';
 import { execute } from './process.js';
 import { shellDialect, shellTools } from './shell.js';
-import { existsSync, appendFileSync, writeFileSync } from 'node:fs';
+import { existsSync, appendFileSync, writeFileSync, readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 
 type Mode = 'check' | 'fix';
@@ -76,6 +76,7 @@ async function main(): Promise<void> {
   const failed = results.filter(result => result.status === 'failed');
   const skipped = results.filter(result => result.status === 'skipped');
   core.setOutput('changed-files', JSON.stringify(changed));
+  core.setOutput('commit-files', JSON.stringify(changed.map(path => ({ path, content: readFileSync(path, 'utf8') }))));
   core.setOutput('result-json', JSON.stringify(results));
   const resultsFile = core.getInput('results-file');
   if (resultsFile) writeFileSync(resultsFile, JSON.stringify(results, null, 2));
