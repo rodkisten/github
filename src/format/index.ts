@@ -76,7 +76,8 @@ export async function main(): Promise<void> {
   const failed = results.filter(result => result.status === 'failed');
   const skipped = results.filter(result => result.status === 'skipped');
   core.setOutput('changed-files', JSON.stringify(changed));
-  core.setOutput('commit-files', JSON.stringify(changed.map(path => ({ path, content: readFileSync(path, 'utf8') }))));
+  const commitPath = core.getInput('commit-files-path');
+  if (commitPath) writeFileSync(commitPath, JSON.stringify(changed.map(path => ({ path, content: readFileSync(path, 'utf8') }))));
   core.setOutput('result-json', JSON.stringify(results));
   const resultsFile = core.getInput('results-file');
   if (resultsFile) writeFileSync(resultsFile, JSON.stringify(results, null, 2));
@@ -85,4 +86,4 @@ export async function main(): Promise<void> {
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   if (failed.length) core.setFailed(failed.length+' formatting/lint checks failed');
 }
-main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
+
