@@ -20,6 +20,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  issues: write
 jobs:
   format:
     runs-on: ubuntu-latest
@@ -43,6 +44,7 @@ jobs:
           scope: ${{ inputs.scope || 'changed' }}
           base: origin/main
           results-file: ${{ runner.temp }}/rod-format-results.json
+          commit-files-path: ${{ runner.temp }}/rod-format-commit.json
       - name: 🤖 Authenticate Rod App for PR report
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         id: app
@@ -59,14 +61,14 @@ jobs:
           token: ${{ steps.app.outputs.token }}
           branch: ${{ github.event.pull_request.head.ref }}
           message: ${{ steps.format.outputs.suggested-commit }}
-          files: ${{ steps.format.outputs.commit-files }}
+          files-path: ${{ runner.temp }}/rod-format-commit.json
           author-name: ploocky[bot]
           author-email: ploocky[bot]@users.noreply.github.com
       - name: 📋 Update PR format report
-        if: always() && steps.app.outcome == 'success' && steps.format.outcome == 'success'
+        if: always() && github.event_name == 'pull_request' && steps.format.outcome == 'success'
         uses: ./actions/format-report
         with:
-          github-token: ${{ steps.app.outputs.token }}
+          github-token: ${{ github.token }}
           pr-number: ${{ github.event.pull_request.number }}
           results-file: ${{ runner.temp }}/rod-format-results.json
           mode: ${{ inputs.mode || (github.event.pull_request.head.repo.full_name == github.repository && 'fix') || 'check' }}
