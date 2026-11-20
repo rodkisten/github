@@ -1,29 +1,8 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { readFile, appendFile } from 'node:fs/promises';
-import { resolveConfig, shouldNotify, eventDedupeKey } from './config.js';
-
-type Event = { type: string; conclusion?: string; repository: string; runId: number; jobId?: number; step?: string; url: string; timestamp: string; dedupeKey: string };
-
-export function selectEvents(config: ReturnType<typeof resolveConfig>, jobs: Array<{
-  id: number; name: string; conclusion: string | null; html_url: string | null;
-  steps?: Array<{ name: string; conclusion: string | null }> | null;
-}>, repository: string, runId: number): Event[] {
-  const events: Event[] = [];
-  const add = (event: Omit<Event, 'dedupeKey'>): void => {
-    if (!shouldNotify(config, event)) return;
-    events.push({ ...event, dedupeKey: eventDedupeKey({ repository, runId, jobId: event.jobId, step: event.step, type: event.type }) });
-  };
-  for (const job of jobs) {
-    const url = job.html_url ?? '';
-    for (const step of job.steps ?? []) {
-      if (!step.conclusion) continue;
-      add({ type: step.conclusion === 'failure' ? 'step.failure' : 'step.success', conclusion: step.conclusion, repository, runId, jobId: job.id, step: step.name, url, timestamp: new Date().toISOString() });
-    }
-    if (job.conclusion) add({ type: 'job.completed', conclusion: job.conclusion, repository, runId, jobId: job.id, url, timestamp: new Date().toISOString() });
-  }
-  return events;
-}
+import { resolveConfig } from './config.js';
+import { selectEvents } from './events.js';
 
 async function main(): Promise<void> {
   const defaults = await readFile(core.getInput('defaults', { required: true }), 'utf8');
