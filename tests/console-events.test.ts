@@ -19,12 +19,12 @@ release: { mode: hybrid, initialVersion: 1.0.0 }
 describe('event selection', () => {
   it('selects failed steps and completed jobs but skips successful steps', () => {
     const config = resolveConfig(defaults);
-    const events = selectEvents(config, [{ id: 1, name: 'CI', conclusion: 'failure', html_url: 'https://github.com/example', steps: [{ name: 'Install', conclusion: 'success' }, { name: 'Build', conclusion: 'failure' }] }], 'a/b', 7);
+    const events = selectEvents(config, [{ id: 1, name: 'CI', conclusion: 'failure', status: 'completed', html_url: 'https://github.com/example', steps: [{ name: 'Install', conclusion: 'success' }, { name: 'Build', conclusion: 'failure' }] }], 'a/b', 7);
     expect(events.map(event => event.type)).toEqual(['step.failure', 'job.completed']);
     expect(new Set(events.map(event => event.dedupeKey)).size).toBe(2);
   });
   it('does not select events when notifications are disabled', () => {
     const config = resolveConfig(defaults, 'notify: { enabled: false }');
-    expect(selectEvents(config, [{ id: 1, name: 'CI', conclusion: 'failure', html_url: null }], 'a/b', 7)).toEqual([]);
+    expect(selectEvents(config, [{ id: 1, name: 'CI', conclusion: 'failure', status: 'completed', html_url: null }], 'a/b', 7)).toEqual([]);
   });
 });
