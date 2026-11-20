@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveConfig } from '../src/console/config.js';
-import { selectEvents } from '../src/console/index.js';
+import { selectEvents } from '../src/console/events.js';
 
 const defaults = `
 version: 1
