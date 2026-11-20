@@ -33,6 +33,8 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck && npm test && npm run build
+      - name: 🔬 Verify action bundles load
+        run: node --input-type=module -e "import('./dist/format.js'); import('./dist/format-report.js')"
       - name: 🎨 Format source
         id: format
         uses: ./actions/format
