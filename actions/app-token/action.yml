@@ -27,5 +27,5 @@ outputs:
     description: Short-lived installation token
 runs:
   using: node24
-  main: dist/app-token.js
-  post: dist/app-token.js
+  main: ../../dist/app-token.js
+  post: ../../dist/app-token.js
