@@ -1,6 +1,7 @@
 import { defineConfig } from 'tsdown';
 
 const entries = {
+  'app-token': 'src/app-token/index.ts',
   'paths-filter': 'src/paths-filter/index.ts',
   'node-ci': 'src/node-ci/index.ts',
   'ci-summary': 'src/ci-summary/index.ts',
