@@ -5,6 +5,7 @@ on:
       - fix/validate-action-integrity-20261121
     paths:
       - .github/workflows/migrate-actions-once.yml
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -19,6 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo 'Starting one-time ZIP extraction for PR #12'
           git fetch origin main
           git show origin/main:rod-actions-refactored.zip > /tmp/rod-actions-refactored.zip
           python3 - <<'PY'
