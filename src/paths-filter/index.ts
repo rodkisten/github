@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { logger, style } from '../utils/logger.js';
+import { summary } from '../utils/summary.js';
 import {
   buildFilterMatrix,
   FilterMatrixDefaults,
@@ -138,30 +139,6 @@ async function collectChangedFiles(
   throw new Error(`Unsupported event ${eventName}; use a dedicated dispatch policy`);
 }
 
-async function writeSummary(
-  owner: string,
-  repo: string,
-  filesCount: number,
-  changes: string[],
-  fullRun: boolean
-): Promise<void> {
-  await core.summary
-    .addHeading('🧬 Central paths filter')
-    .addTable([
-      [
-        { data: 'Repository', header: true },
-        { data: 'Changed files', header: true },
-        { data: 'Matched filters', header: true },
-      ],
-      [
-        `${owner}/${repo}`,
-        String(filesCount),
-        fullRun ? 'Initial push · all filters' : changes.join(', ') || 'None',
-      ],
-    ])
-    .write();
-}
-
 async function main(): Promise<void> {
   const { owner, repo } = github.context.repo;
 
@@ -177,50 +154,4 @@ async function main(): Promise<void> {
 
   const octokit = github.getOctokit(inputs.token);
 
-  const filters = await logger.step('Fetch & parse central rules', async () => {
-    const yaml = await fetchCentralConfig(octokit, inputs);
-    const parsedFilters = selectFilters(yaml, inputs.repositoryKey);
-    logger.item('Configured filters', Object.keys(parsedFilters).join(', ') || 'none', true);
-    return parsedFilters;
-  });
-
-  const { files, fullRun } = await logger.step('Collect changed files', async () => {
-    const result = await collectChangedFiles(octokit, owner, repo, inputs.base);
-    logger.item('Unique files changed', result.files.length);
-    logger.item('Full run mode', result.fullRun, true);
-    return result;
-  });
-
-  const { changes, matrix } = await logger.step('Match filters & build matrix', () => {
-    const matched = resolveMatchedFilters(files, filters, fullRun);
-    const builtMatrix = buildFilterMatrix(matched, filters, inputs.matrixDefaults);
-
-    if (matched.length > 0) {
-      logger.info(`Matched filters: ${style.bold(matched.join(', '))}`);
-    } else {
-      logger.info('No filters matched');
-    }
-    logger.item('Matrix jobs generated', builtMatrix.length, true);
-
-    return { changes: matched, matrix: builtMatrix };
-  });
-
-  logger.divider('Outputs & Job Summary');
-
-  core.setOutput('files', JSON.stringify(files));
-  core.setOutput('changes', JSON.stringify(changes));
-  core.setOutput('any', String(changes.length > 0));
-  core.setOutput('full-run', String(fullRun));
-  core.setOutput('matrix', JSON.stringify(matrix));
-
-  await writeSummary(owner, repo, files.length, changes, fullRun);
-
-  logger.success('Central paths filter finished');
-  logger.divider('', '═');
-}
-
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  logger.error(message, 'Central Paths Filter');
-  core.setFailed(message);
-});
+  const filters = await logger.step
