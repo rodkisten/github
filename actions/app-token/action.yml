@@ -10,7 +10,7 @@ inputs:
   owner:
     description: Installation owner (defaults to current owner)
     required: false
-    default: ${{ github.repository_owner }}
+    default: '${{ github.repository_owner }}'
   repositories:
     description: Optional comma/newline-separated repositories
     required: false
@@ -25,16 +25,7 @@ inputs:
 outputs:
   token:
     description: Short-lived installation token
-    value: ${{ steps.token.outputs.token }}
 runs:
-  using: composite
-  steps:
-    - id: token
-      uses: actions/create-github-app-token@v2
-      with:
-        app-id: ${{ inputs.app-id }}
-        private-key: ${{ inputs.private-key }}
-        owner: ${{ inputs.owner }}
-        repositories: ${{ inputs.repositories }}
-        permission-contents: ${{ inputs.permission-contents }}
-        permission-pull-requests: ${{ inputs.permission-pull-requests }}
+  using: node24
+  main: ../../dist/app-token.js
+  post: ../../dist/app-token.js
