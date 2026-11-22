@@ -1,52 +1,10 @@
 import * as core from '@actions/core';
 import { createAppAuth } from '@octokit/auth-app';
 import { request } from '@octokit/request';
+import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
 
 type PermissionLevel = 'read' | 'write' | 'admin';
-
-interface AppTokenInputs {
-  appId: string;
-  privateKey: string;
-  owner: string;
-  repositories?: string[];
-  permissions: Record<string, PermissionLevel>;
-}
-
-function parseRepositories(raw: string): string[] | undefined {
-  if (!raw.trim()) return undefined;
-  return raw
-    .split(/[\n,]+/)
-    .map((repo) => repo.trim())
-    .filter(Boolean);
-}
-
-function getInputs(): AppTokenInputs {
-  const appId = core.getInput('app-id', { required: true });
-  const privateKey = core.getInput('private-key', { required: true });
-  core.setSecret(privateKey);
-
-  const owner = core.getInput('owner') || process.env.GITHUB_REPOSITORY_OWNER || '';
-  if (!owner) {
-    throw new Error('Installation owner is required');
-  }
-
-  const repositories = parseRepositories(core.getInput('repositories'));
-  const permissionContents = core.getInput('permission-contents') as PermissionLevel;
-  const permissionPullRequests = core.getInput('permission-pull-requests') as PermissionLevel;
-
-  const permissions: Record<string, PermissionLevel> = {};
-  if (permissionContents) permissions.contents = permissionContents;
-  if (permissionPullRequests) permissions.pull_requests = permissionPullRequests;
-
-  return {
-    appId,
-    privateKey,
-    owner,
-    repositories,
-    permissions,
-  };
-}
 
 async function resolveInstallationId(appJwt: string, owner: string): Promise<number> {
   return logger.spin(`Resolving GitHub App installation for "${owner}"`, async () => {
@@ -69,43 +27,76 @@ async function resolveInstallationId(appJwt: string, owner: string): Promise<num
 async function runMain(): Promise<void> {
   logger.banner('GitHub App Token', 'Mint scoped installation token');
 
-  const inputs = await logger.step('Load App configuration', () => {
-    const parsed = getInputs();
-    logger.item('App ID', parsed.appId);
+  const {
+    'app-id': appId,
+    'private-key': privateKey,
+    owner,
+    repositories,
+    permissions,
+  } = await logger.step('Load App configuration', () => {
+    const parsed = getInputs({
+      'app-id': { required: true },
+      'private-key': { required: true, secret: true },
+      owner: {
+        default: process.env.GITHUB_REPOSITORY_OWNER || '',
+        parse: (raw) => {
+          const resolved = raw || process.env.GITHUB_REPOSITORY_OWNER || '';
+          if (!resolved) throw new Error('Installation owner is required');
+          return resolved;
+        },
+      },
+      repositories: { type: 'list' },
+      'permission-contents': { default: '' },
+      'permission-pull-requests': { default: '' },
+    });
+
+    const scopedPermissions: Record<string, PermissionLevel> = {};
+    if (parsed['permission-contents']) {
+      scopedPermissions.contents = parsed['permission-contents'] as PermissionLevel;
+    }
+    if (parsed['permission-pull-requests']) {
+      scopedPermissions.pull_requests = parsed['permission-pull-requests'] as PermissionLevel;
+    }
+
+    const repoList = parsed.repositories.length > 0 ? parsed.repositories : undefined;
+
+    logger.item('App ID', parsed['app-id']);
     logger.item('Owner', parsed.owner);
-    logger.item(
-      'Repositories',
-      parsed.repositories ? parsed.repositories.join(', ') : 'all accessible'
-    );
+    logger.item('Repositories', repoList ? repoList.join(', ') : 'all accessible');
     logger.item(
       'Permissions',
-      Object.entries(parsed.permissions)
+      Object.entries(scopedPermissions)
         .map(([k, v]) => `${k}:${v}`)
         .join(', ') || 'default',
       true
     );
-    return parsed;
+
+    return {
+      ...parsed,
+      repositories: repoList,
+      permissions: scopedPermissions,
+    };
   });
 
   const token = await logger.step('Mint installation token', async () => {
     const auth = createAppAuth({
-      appId: inputs.appId,
-      privateKey: inputs.privateKey,
+      appId,
+      privateKey,
     });
 
     const appAuth = await logger.spin('Authenticating as GitHub App (JWT)', () =>
       auth({ type: 'app' })
     );
 
-    const installationId = await resolveInstallationId(appAuth.token, inputs.owner);
+    const installationId = await resolveInstallationId(appAuth.token, owner);
     logger.item('Installation ID', installationId);
 
     const installationAuth = await logger.spin('Requesting scoped installation token', () =>
       auth({
         type: 'installation',
         installationId,
-        repositoryNames: inputs.repositories,
-        permissions: inputs.permissions,
+        repositoryNames: repositories,
+        permissions,
       })
     );
 
@@ -116,9 +107,9 @@ async function runMain(): Promise<void> {
 
   core.setSecret(token);
   core.saveState('token', token);
-  core.setOutput('token', token);
+  setOutputs({ token });
 
-  logger.success(`Installation token minted for ${style.bold(inputs.owner)}`);
+  logger.success(`Installation token minted for ${style.bold(owner)}`);
   logger.divider('', '═');
 }
 
