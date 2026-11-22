@@ -1,15 +1,15 @@
-import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { runAction } from '../utils/action.js';
+import type { Octokit } from '../utils/git.js';
+import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
 import { summary } from '../utils/summary.js';
 import {
   buildFilterMatrix,
-  FilterMatrixDefaults,
+  type FilterMatrixDefaults,
   resolveMatchedFilters,
   selectFilters,
 } from './rules.js';
-
-type Octokit = ReturnType<typeof github.getOctokit>;
 
 interface ActionInputs {
   token: string;
@@ -22,31 +22,44 @@ interface ActionInputs {
   matrixDefaults: FilterMatrixDefaults;
 }
 
-function getInputs(defaultRepo: string): ActionInputs {
-  const token = core.getInput('token', { required: true });
-  core.setSecret(token);
+function parseActionInputs(defaultRepo: string): ActionInputs {
+  const parsed = getInputs({
+    token: { required: true, secret: true },
+    'config-repository': { default: 'rodkisten/github' },
+    'config-path': { default: 'config/paths.yml' },
+    'config-ref': { default: 'main' },
+    'repository-key': { default: defaultRepo },
+    base: { default: '' },
+    'working-directory': { default: '.' },
+    'test-command': { default: 'npm test' },
+    'build-command': { default: 'npm run build' },
+    'lint-command': { default: 'npm run lint' },
+    'run-tests': { type: 'boolean', default: true },
+    'run-build': { type: 'boolean', default: true },
+    'run-lint': { type: 'boolean', default: false },
+  });
 
-  const [configOwner, configRepo] = core.getInput('config-repository').split('/');
+  const [configOwner, configRepo] = parsed['config-repository'].split('/');
   if (!configOwner || !configRepo) {
     throw new Error('Invalid config-repository');
   }
 
   return {
-    token,
+    token: parsed.token,
     configOwner,
     configRepo,
-    configPath: core.getInput('config-path'),
-    configRef: core.getInput('config-ref'),
-    repositoryKey: core.getInput('repository-key') || defaultRepo,
-    base: core.getInput('base'),
+    configPath: parsed['config-path'],
+    configRef: parsed['config-ref'],
+    repositoryKey: parsed['repository-key'] || defaultRepo,
+    base: parsed.base,
     matrixDefaults: {
-      workingDirectory: core.getInput('working-directory') || '.',
-      testCommand: core.getInput('test-command') || 'npm test',
-      buildCommand: core.getInput('build-command') || 'npm run build',
-      lintCommand: core.getInput('lint-command') || 'npm run lint',
-      runTests: core.getBooleanInput('run-tests'),
-      runBuild: core.getBooleanInput('run-build'),
-      runLint: core.getBooleanInput('run-lint'),
+      workingDirectory: parsed['working-directory'],
+      testCommand: parsed['test-command'],
+      buildCommand: parsed['build-command'],
+      lintCommand: parsed['lint-command'],
+      runTests: parsed['run-tests'],
+      runBuild: parsed['run-build'],
+      runLint: parsed['run-lint'],
     },
   };
 }
@@ -139,13 +152,13 @@ async function collectChangedFiles(
   throw new Error(`Unsupported event ${eventName}; use a dedicated dispatch policy`);
 }
 
-async function main(): Promise<void> {
+runAction('Central Paths Filter', async () => {
   const { owner, repo } = github.context.repo;
 
   logger.banner('Central Paths Filter', `${owner}/${repo} · ${github.context.eventName}`);
 
   const inputs = await logger.step('Load inputs & configuration', () => {
-    const parsed = getInputs(repo);
+    const parsed = parseActionInputs(repo);
     logger.item('Config repository', `${parsed.configOwner}/${parsed.configRepo}`);
     logger.item('Config path', `${parsed.configPath}@${parsed.configRef}`);
     logger.item('Repository key', parsed.repositoryKey, true);
@@ -154,4 +167,50 @@ async function main(): Promise<void> {
 
   const octokit = github.getOctokit(inputs.token);
 
-  const filters = await logger.step
+  const filters = await logger.step('Resolve repository filter rules', async () => {
+    const source = await fetchCentralConfig(octokit, inputs);
+    const selected = selectFilters(source, inputs.repositoryKey);
+    logger.item('Available filters', Object.keys(selected).join(', '), true);
+    return selected;
+  });
+
+  const { files, fullRun } = await logger.step('Collect changed files', async () => {
+    const collected = await collectChangedFiles(octokit, owner, repo, inputs.base);
+    logger.item('Changed files count', collected.files.length);
+    logger.item('Full run fallback', collected.fullRun, true);
+    return collected;
+  });
+
+  const { changes, matrix } = await logger.step('Evaluate path matches & build matrix', () => {
+    const matched = resolveMatchedFilters(files, filters, fullRun);
+    const resolvedMatrix = buildFilterMatrix(matched, filters, inputs.matrixDefaults);
+    logger.item('Matched filters', matched.length > 0 ? matched.join(', ') : 'none', true);
+    return { changes: matched, matrix: resolvedMatrix };
+  });
+
+  logger.divider('Outputs & Summary');
+
+  setOutputs({
+    changes,
+    any: changes.length > 0,
+    files,
+    'full-run': fullRun,
+    matrix,
+  });
+
+  await summary.publish('🧬 Central Paths Filter', [
+    {
+      kv: {
+        Repository: inputs.repositoryKey,
+        'Matched filters': changes.length > 0 ? changes.join(', ') : 'None',
+        'Changed files': files.length,
+        'Full run': fullRun ? 'Yes' : 'No',
+      },
+    },
+  ]);
+
+  logger.success(
+    `Evaluated ${Object.keys(filters).length} filters → ${style.bold(`${changes.length} matched`)}`
+  );
+  logger.divider('', '═');
+});

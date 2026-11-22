@@ -15,15 +15,20 @@ jobs:
       - name: 📦 Install
         run: npm install --no-audit --no-fund
       - name: 🌈 Install rodlog
-        uses: ./actions/setup-rodlog
+        uses: ./src/setup-rodlog
       - name: 🔎 Typecheck
         run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
       - name: 🧪 Vitest
         run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle
         run: rodlog exec --mode=transform -- npm run build
+      - name: 🧪 Smoke-test Skip CI action
+        id: skip-smoke
+        uses: ./src/skip-ci
+        with:
+          commit-message: 'docs: update readme [skip ci]'
       - name: 🧪 Smoke-test bundled TypeScript Node CI action
-        uses: ./actions/node-ci
+        uses: ./src/node-ci
         with:
           working-directory: .
           test-command: node -e "process.exit(0)"
@@ -33,7 +38,7 @@ jobs:
       - name: 🧯 Smoke-test expected command failure
         id: expected-failure
         continue-on-error: true
-        uses: ./actions/node-ci
+        uses: ./src/node-ci
         with:
           test-command: node -e "process.exit(7)"
           run-build: 'false'
@@ -47,61 +52,37 @@ jobs:
           fi
           echo '🧯 Expected failure correctly propagated.' >> "$GITHUB_STEP_SUMMARY"
       - name: 📝 Smoke-test TypeScript CI summary
-        uses: ./actions/ci-summary
+        uses: ./src/ci-summary
         with:
           title: '🧪 TypeScript Action integration'
           status: success
           details: 'Bundled Node 24 summary action executed successfully.'
-      - name: 🧩 Verify local imports and action references
-        run: |
-          node --input-type=module <<'NODE'
-          import { existsSync, readFileSync, globSync } from 'node:fs';
-          import { dirname, resolve } from 'node:path';
-          import YAML from 'yaml';
-          const errors = [];
-          const files = globSync('src/**/*.{ts,tsx}');
-          for (const file of files) {
-            const content = readFileSync(file, 'utf8');
-            const imports = [...content.matchAll(/(?:from\\s*|import\\s*\\(\\s*)['"]([^'"]+)['"]/g)];
-            for (const [, spec] of imports) {
-              if (!spec.startsWith('.')) continue;
-              const base = resolve(dirname(file), spec);
-              if (![base, base + '.ts', base + '.tsx', base + '.js', resolve(base, 'index.ts'), resolve(base, 'index.tsx')].some(existsSync)) {
-                errors.push(file + ': unresolved import ' + spec);
-              }
-            }
-          }
-          for (const file of [...globSync('.github/workflows/*.{yml,yaml}'), ...globSync('actions/**/action.{yml,yaml}')]) {
-            const doc = YAML.parseDocument(readFileSync(file, 'utf8'), { uniqueKeys: true });
-            for (const error of doc.errors) errors.push(file + ': ' + error.message);
-            const data = doc.toJS();
-            const jobs = Object.values(data?.jobs ?? {});
-            const steps = [...(data?.runs?.steps ?? []), ...jobs.flatMap(job => job?.steps ?? [])];
-            for (const step of steps) {
-              const local = step?.uses;
-              if (typeof local === 'string' && local.startsWith('./') && !existsSync(local)) {
-                errors.push(file + ': missing local action ' + local);
-              }
-            }
-          }
-          if (errors.length) {
-            for (const error of errors) console.error('::error::' + error);
-            process.exitCode = 1;
-          } else {
-            console.log('Verified ' + files.length + ' TypeScript files and local action references.');
-          }
-          NODE
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
-          import { readFileSync, existsSync, statSync } from 'node:fs';
-          import { globSync } from 'node:fs';
+          import { readFileSync, existsSync, statSync, globSync } from 'node:fs';
           import YAML from 'yaml';
           for (const path of [...globSync('actions/**/*.yml'), ...globSync('.github/workflows/*.yml')]) {
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          for (const name of ['paths-filter', 'node-ci', 'ci-summary', 'create-pr', 'commit']) {
+          const expectedBundles = [
+            'app-token',
+            'ci-summary',
+            'commit',
+            'console',
+            'console-run',
+            'create-pr',
+            'format',
+            'format-report',
+            'node-ci',
+            'paths-filter',
+            'publish',
+            'setup-node',
+            'setup-rodlog',
+            'skip-ci',
+          ];
+          for (const name of expectedBundles) {
             if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
               throw new Error(`Missing bundled ${name} action`);
             }

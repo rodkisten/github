@@ -1,23 +1,66 @@
-import * as core from '@actions/core';
 import { resolve } from 'node:path';
+import * as core from '@actions/core';
+import { runAction } from '../utils/action.js';
+import { getInputs } from '../utils/inputs.js';
+import { logger, style } from '../utils/logger.js';
+import { summary } from '../utils/summary.js';
 import { execute, type CommandResult } from './runner.js';
 import { getTasks } from './tasks.js';
 
-async function main(): Promise<void> {
-  const cwd = resolve(core.getInput('working-directory') || '.');
-  const scope = core.getInput('scope');
+runAction('TypeScript Node CI', async () => {
+  const inputs = getInputs({
+    'working-directory': { default: '.' },
+    scope: { default: '' },
+    'test-command': { default: 'npm test' },
+    'build-command': { default: 'npm run build' },
+    'lint-command': { default: 'npm run lint' },
+    'run-tests': { type: 'boolean', default: true },
+    'run-build': { type: 'boolean', default: true },
+    'run-lint': { type: 'boolean', default: false },
+  });
+
+  const cwd = resolve(inputs['working-directory']);
+  const scope = inputs.scope;
   const commandEnv = { ...process.env, ...(scope ? { ROD_CI_FILTER: scope } : {}) };
-  const tasks = getTasks(core.getInput, core.getBooleanInput);
+
+  logger.banner(
+    'TypeScript Node CI',
+    `${scope ? `Filter: ${scope} · ` : ''}${inputs['working-directory']}`
+  );
+
+  const tasks = getTasks(
+    (name) => String((inputs as Record<string, unknown>)[name] ?? ''),
+    (name) => Boolean((inputs as Record<string, unknown>)[name])
+  );
+
   const results: Array<{ name: string } & CommandResult> = [];
   let failure: Error | undefined;
   const skipped: string[] = [];
+
   for (const task of tasks) {
-    if (!task.enabled) { skipped.push(task.name); continue; }
-    if (!task.command.trim()) { failure = new Error(`Missing ${task.name} command`); break; }
-    core.startGroup(`🟦 ${task.name}: ${task.command}`);
+    if (!task.enabled) {
+      skipped.push(task.name);
+      logger.debug(`Skipping disabled task: ${task.name}`);
+      continue;
+    }
+
+    if (!task.command.trim()) {
+      failure = new Error(`Missing ${task.name} command`);
+      break;
+    }
+
     try {
-      const result = await execute(task.command, cwd, undefined, commandEnv);
+      const result = await logger.step(`${task.name.toUpperCase()}: ${task.command}`, async () => {
+        logger.item('Working directory', cwd);
+        if (scope) logger.item('Filter scope', scope);
+        const execRes = await execute(task.command, cwd, undefined, commandEnv);
+        logger.item('Exit code', execRes.exitCode);
+        logger.item('Duration', `${execRes.durationMs}ms`, true);
+        return execRes;
+      });
+
       results.push({ name: task.name, ...result });
+
       if (result.exitCode !== 0) {
         failure = new Error(`${task.name} exited with code ${result.exitCode}`);
         break;
@@ -25,15 +68,26 @@ async function main(): Promise<void> {
     } catch (error) {
       failure = error instanceof Error ? error : new Error(String(error));
       break;
-    } finally { core.endGroup(); }
+    }
   }
-  await core.summary.addHeading('🟦 Shared Node CI')
-    .addTable([
-      [{ data: 'Task', header: true }, { data: 'Exit', header: true }, { data: 'Duration (ms)', header: true }],
-      ...results.map(r => [r.name, String(r.exitCode), String(r.durationMs)]),
-    ])
-    .addRaw(`Skipped: ${skipped.join(', ') || 'none'}\n\nStatus: **${failure ? 'failed' : 'passed'}**\n`)
-    .write();
-  if (failure) throw failure;
-}
-main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
+
+  await summary.publish('🟦 Shared Node CI', [
+    {
+      table: results.map((r) => ({
+        Task: r.name,
+        Exit: r.exitCode,
+        'Duration (ms)': r.durationMs,
+      })),
+    },
+    {
+      text: `Skipped: ${skipped.join(', ') || 'none'}\n\nStatus: **${failure ? 'failed' : 'passed'}**`,
+    },
+  ]);
+
+  if (failure) {
+    throw failure;
+  }
+
+  logger.success(`All enabled CI tasks passed in ${style.bold(inputs['working-directory'])}`);
+  logger.divider('', '═');
+});

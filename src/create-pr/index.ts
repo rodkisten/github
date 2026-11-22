@@ -1,54 +1,54 @@
-import * as core from '@actions/core';
 import * as github from '@actions/github';
+import { runAction } from '../utils/action.js';
 import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger } from '../utils/logger.js';
+import { logger, style } from '../utils/logger.js';
 import { summary } from '../utils/summary.js';
 import { appendConversationUrl } from './helpers.js';
 import { createOrUpdatePullRequest } from './operation.js';
 
-async function main(): Promise<void> {
+runAction('Create or Update PR', async () => {
   const { owner, repo } = github.context.repo;
 
-  // Tudo tipado e validado em uma única chamada (inclusive nomes com hífen!)
-  const {
-    token,
-    head,
-    base,
-    title,
-    body,
-    draft,
-    'update-existing': updateExisting,
-    'conversation-url': conversationUrl,
-    labels,
-    reviewers,
-  } = getInputs({
-    token: { required: true, secret: true },
-    head: { required: true },
-    base: { default: github.context.payload.repository?.default_branch || 'main' },
-    title: { required: true },
-    body: { default: '' },
-    draft: { type: 'boolean', default: false },
-    'update-existing': { type: 'boolean', default: false },
-    'conversation-url': { default: '' },
-    labels: { type: 'list' },
-    reviewers: { type: 'list' },
+  logger.banner('Create or Update PR', `${owner}/${repo}`);
+
+  const inputs = await logger.step('Validate PR inputs', () => {
+    const parsed = getInputs({
+      token: { required: true, secret: true },
+      head: { required: true },
+      base: { default: github.context.payload.repository?.default_branch || 'main' },
+      title: { required: true },
+      body: { default: '' },
+      draft: { type: 'boolean', default: false },
+      'update-existing': { type: 'boolean', default: true },
+      'conversation-url': { default: '' },
+      labels: { type: 'list' },
+      reviewers: { type: 'list' },
+    });
+
+    logger.item('Head', parsed.head);
+    logger.item('Base', parsed.base);
+    logger.item('Draft', parsed.draft);
+    logger.item('Update existing', parsed['update-existing'], true);
+
+    return parsed;
   });
 
-  const octokit = github.getOctokit(token);
+  const octokit = github.getOctokit(inputs.token);
   const result = await createOrUpdatePullRequest(octokit, {
     owner,
     repo,
-    head,
-    base,
-    title,
-    body: appendConversationUrl(body, conversationUrl),
-    draft,
-    updateExisting,
-    labels,
-    reviewers,
+    head: inputs.head,
+    base: inputs.base,
+    title: inputs.title,
+    body: appendConversationUrl(inputs.body, inputs['conversation-url']),
+    draft: inputs.draft,
+    updateExisting: inputs['update-existing'],
+    labels: inputs.labels,
+    reviewers: inputs.reviewers,
   });
 
-  // Todos os outputs exportados em uma linha
+  logger.divider('Outputs & Summary');
+
   setOutputs({
     number: result.number,
     url: result.url,
@@ -61,10 +61,15 @@ async function main(): Promise<void> {
       table: [
         {
           PR: `[#${result.number}](${result.url})`,
-          Base: base,
+          Base: inputs.base,
           Result: result.created ? 'Created' : 'Updated',
         },
       ],
     },
   ]);
-}
+
+  logger.success(
+    `Pull request #${result.number} ${result.created ? 'created' : 'updated'}: ${style.bold(result.url)}`
+  );
+  logger.divider('', '═');
+});

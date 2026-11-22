@@ -1,4 +1,4 @@
-name: Publish Git changes
+name: 📤 Publish Git changes
 description: Commit changes directly or publish/update a pull request with Handlebars templates
 inputs:
   token:

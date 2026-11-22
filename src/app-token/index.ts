@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import { createAppAuth } from '@octokit/auth-app';
 import { request } from '@octokit/request';
+import { runAction } from '../utils/action.js';
 import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
 
@@ -48,6 +49,8 @@ async function runMain(): Promise<void> {
       repositories: { type: 'list' },
       'permission-contents': { default: '' },
       'permission-pull-requests': { default: '' },
+      'permission-issues': { default: '' },
+      'permission-actions': { default: '' },
     });
 
     const scopedPermissions: Record<string, PermissionLevel> = {};
@@ -56,6 +59,12 @@ async function runMain(): Promise<void> {
     }
     if (parsed['permission-pull-requests']) {
       scopedPermissions.pull_requests = parsed['permission-pull-requests'] as PermissionLevel;
+    }
+    if (parsed['permission-issues']) {
+      scopedPermissions.issues = parsed['permission-issues'] as PermissionLevel;
+    }
+    if (parsed['permission-actions']) {
+      scopedPermissions.actions = parsed['permission-actions'] as PermissionLevel;
     }
 
     const repoList = parsed.repositories.length > 0 ? parsed.repositories : undefined;
@@ -78,7 +87,7 @@ async function runMain(): Promise<void> {
     };
   });
 
-  const token = await logger.step('Mint installation token', async () => {
+  const { token, appSlug } = await logger.step('Mint installation token', async () => {
     const auth = createAppAuth({
       appId,
       privateKey,
@@ -88,8 +97,17 @@ async function runMain(): Promise<void> {
       auth({ type: 'app' })
     );
 
+    const appInfo = await logger.spin('Fetching GitHub App metadata', () =>
+      request('GET /app', {
+        headers: {
+          authorization: `bearer ${appAuth.token}`,
+        },
+      })
+    );
+
     const installationId = await resolveInstallationId(appAuth.token, owner);
     logger.item('Installation ID', installationId);
+    logger.item('App Slug', appInfo.data.slug);
 
     const installationAuth = await logger.spin('Requesting scoped installation token', () =>
       auth({
@@ -100,16 +118,16 @@ async function runMain(): Promise<void> {
       })
     );
 
-    return installationAuth.token;
+    return { token: installationAuth.token, appSlug: appInfo.data.slug };
   });
 
   logger.divider('Outputs & State');
 
   core.setSecret(token);
   core.saveState('token', token);
-  setOutputs({ token });
+  setOutputs({ token, 'app-slug': appSlug });
 
-  logger.success(`Installation token minted for ${style.bold(owner)}`);
+  logger.success(`Installation token minted for ${style.bold(owner)} (${appSlug}[bot])`);
   logger.divider('', '═');
 }
 
@@ -141,7 +159,7 @@ async function runPost(): Promise<void> {
   logger.divider('', '═');
 }
 
-async function run(): Promise<void> {
+runAction('GitHub App Token', async () => {
   const isPost = Boolean(core.getState('isPost'));
 
   if (!isPost) {
@@ -150,10 +168,4 @@ async function run(): Promise<void> {
   } else {
     await runPost();
   }
-}
-
-run().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  logger.error(message, 'GitHub App Token');
-  core.setFailed(message);
 });

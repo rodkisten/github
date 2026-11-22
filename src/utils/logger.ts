@@ -4,13 +4,11 @@ const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === 'true';
 const IS_TTY = Boolean(process.stdout.isTTY);
 const FORCE_COLOR = process.env.FORCE_COLOR !== '0';
 
-// Códigos ANSI
 const ANSI = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
   italic: '\x1b[3m',
-  // Texto
   black: '\x1b[30m',
   white: '\x1b[97m',
   cyan: '\x1b[36m',
@@ -19,7 +17,6 @@ const ANSI = {
   red: '\x1b[31m',
   magenta: '\x1b[35m',
   gray: '\x1b[90m',
-  // Fundos estilo Vite
   bgCyan: '\x1b[46m',
   bgGreen: '\x1b[42m',
   bgYellow: '\x1b[43m',
@@ -43,7 +40,6 @@ export const style = {
   red: paint(ANSI.red),
   magenta: paint(ANSI.magenta),
   gray: paint(ANSI.gray),
-  // Badges com fundo colorido estilo Vite
   badgeVite: paint(`${ANSI.bgMagenta}${ANSI.white}${ANSI.bold}`),
   badgeInfo: paint(`${ANSI.bgCyan}${ANSI.black}${ANSI.bold}`),
   badgeStep: paint(`${ANSI.bgBlue}${ANSI.white}${ANSI.bold}`),
@@ -62,10 +58,10 @@ function getTerminalWidth(): number {
   if (typeof cols === 'number' && cols > 20) {
     return Math.min(cols, 120);
   }
-  return 80; // Largura padrão limpa para o visualizador web do GitHub Actions
+  return 80;
 }
 
-function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
 }
@@ -95,9 +91,6 @@ export class Logger {
     process.stdout.write(`${line}\n`);
   }
 
-  /**
-   * Cabeçalho principal estilo Vite com versão/contexto e linha dupla proporcional à janela
-   */
   banner(title: string, subtitle?: string): void {
     const width = getTerminalWidth();
     const badge = style.badgeVite(` ⚡ ${title.toUpperCase()} `);
@@ -110,9 +103,6 @@ export class Logger {
     this.write(line);
   }
 
-  /**
-   * Linha separadora horizontal calculada pela largura da janela
-   */
   divider(label?: string, char = '─'): void {
     const width = getTerminalWidth();
     const indentOffset = this.depth * 3;
@@ -176,9 +166,6 @@ export class Logger {
     }
   }
 
-  /**
-   * Lista itens chave-valor alinhados dentro do nível atual
-   */
   item(key: string, value: string | number | boolean, isLast = false): void {
     const formattedValue =
       typeof value === 'boolean'
@@ -190,9 +177,6 @@ export class Logger {
     this.write(`${this.getIndent(isLast)}${style.dim(`${key}:`)} ${formattedValue}`);
   }
 
-  /**
-   * Executa um bloco dentro de um Step (suporta aninhamento e ::group:: no GitHub Actions)
-   */
   async step<T>(title: string, fn: () => Promise<T> | T, options?: { group?: boolean }): Promise<T> {
     const start = performance.now();
     const useGitHubGroup = IS_GITHUB_ACTIONS && this.depth === 0 && (options?.group ?? true);
@@ -238,14 +222,10 @@ export class Logger {
     }
   }
 
-  /**
-   * Executa uma operação assíncrona com indicador de loading e tempo decorrido
-   */
   async spin<T>(label: string, fn: () => Promise<T>): Promise<T> {
     const start = performance.now();
     const indent = this.getIndent();
 
-    // Em CI não-interativo (GitHub Actions), evita spam de frames ANSI
     if (!IS_TTY || IS_GITHUB_ACTIONS) {
       this.write(`${indent}${style.cyan('◌')} ${label}${style.dim('...')}`);
       try {
@@ -260,7 +240,6 @@ export class Logger {
       }
     }
 
-    // Terminal interativo (TTY): animação fluida em uma única linha
     let frameIndex = 0;
     const timer = setInterval(() => {
       const frame = style.cyan(SPINNER_FRAMES[frameIndex % SPINNER_FRAMES.length]);

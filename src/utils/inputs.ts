@@ -26,9 +26,13 @@ export type InferInputs<S extends InputSchema> = {
   [K in keyof S]: InferFieldType<S[K]>;
 };
 
-/**
- * Lê, valida, mascara secrets e faz o parse tipado de todos os inputs de uma vez.
- */
+export function parseListInput(raw: string): string[] {
+  return raw
+    .split(/[\r\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function getInputs<S extends InputSchema>(schema: S): InferInputs<S> {
   const result = {} as Record<string, unknown>;
 
@@ -64,12 +68,7 @@ export function getInputs<S extends InputSchema>(schema: S): InferInputs<S> {
       }
 
       case 'list':
-        result[key] = raw
-          ? raw
-              .split(/[\n,]+/)
-              .map((item) => item.trim())
-              .filter(Boolean)
-          : [];
+        result[key] = raw ? parseListInput(raw) : [];
         break;
 
       case 'json':
@@ -85,9 +84,6 @@ export function getInputs<S extends InputSchema>(schema: S): InferInputs<S> {
   return result as InferInputs<S>;
 }
 
-/**
- * Exporta múltiplos outputs de uma vez convertendo boolean, number e arrays/objetos automaticamente.
- */
 export function setOutputs(outputs: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(outputs)) {
     if (value === undefined || value === null) continue;

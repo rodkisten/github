@@ -1,4 +1,4 @@
-name: Rod Format PR Report
+name: 📋 Rod Format PR Report
 description: Create or update a single formatted PR summary comment
 inputs:
   github-token:
@@ -14,6 +14,9 @@ inputs:
     default: check
   scope:
     default: changed
+outputs:
+  comment-updated:
+    description: Whether the PR report comment was created or updated
 runs:
   using: node24
   main: ../../dist/format-report.js

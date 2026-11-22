@@ -1,4 +1,4 @@
-name: Rod Console Runner
+name: 🧩 Rod Console Runner
 description: Instrument a shell command with duration, exit code and GitHub step summary
 inputs:
   command:

@@ -1,4 +1,4 @@
-name: CI summary
+name: 📋 CI summary
 description: Write a standardized GitHub Actions job summary
 inputs:
   title:
