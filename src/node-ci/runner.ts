@@ -1,20 +1,22 @@
-import { spawn } from 'node:child_process';
+import { cmd, type CommandResult } from '../utils/cmd.js';
 
-export type CommandResult = { command: string; exitCode: number; durationMs: number };
+export type { CommandResult };
+
+const DEFAULT_SHELL = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
 
 export async function execute(
   command: string,
-  cwd: string,
-  shell: string = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
+  cwd: string = process.cwd(),
+  shell: string = DEFAULT_SHELL,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<CommandResult> {
-  const started = Date.now();
-  const child = spawn(command, { cwd, shell, stdio: 'inherit', env });
-  const exitCode = await new Promise<number>((done, reject) => {
-    child.once('error', reject);
-    child.once('close', (code, signal) =>
-      signal ? reject(new Error(`Command terminated by ${signal}`)) : done(code ?? 1),
-    );
+  const { exitCode, durationMs } = await cmd(command, {
+    cwd,
+    shell,
+    env,
+    stdio: 'inherit',
+    rejectOnNonZero: false,
   });
-  return { command, exitCode, durationMs: Date.now() - started };
+
+  return { command, exitCode, durationMs };
 }
