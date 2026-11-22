@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { logger, style } from '../utils/logger.js';
+import { summary } from '../utils/summary.js';
 import { createAtomicCommit } from './operation.js';
 import { validateBranchName, validateChanges, type FileChange } from './validate.js';
 
@@ -50,20 +51,6 @@ function getInputs(): CommitActionInputs {
   };
 }
 
-async function writeSummary(branch: string, sha: string, filesCount: number): Promise<void> {
-  await core.summary
-    .addHeading('📝 App-authored commit')
-    .addTable([
-      [
-        { data: 'Branch', header: true },
-        { data: 'Commit', header: true },
-        { data: 'Files', header: true },
-      ],
-      [branch, sha, String(filesCount)],
-    ])
-    .write();
-}
-
 async function main(): Promise<void> {
   const { owner, repo } = github.context.repo;
 
@@ -97,7 +84,17 @@ async function main(): Promise<void> {
   core.setOutput('branch', inputs.branch);
   core.setOutput('files', String(result.files));
 
-  await writeSummary(inputs.branch, result.sha, result.files);
+  await summary.publish('📝 App-authored commit', [
+    {
+      table: [
+        {
+          Branch: inputs.branch,
+          Commit: result.sha,
+          Files: result.files,
+        },
+      ],
+    },
+  ]);
 
   logger.success(`Committed ${result.files} file(s) to ${style.bold(inputs.branch)}`);
   logger.divider('', '═');
