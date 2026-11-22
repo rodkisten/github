@@ -52,6 +52,45 @@ jobs:
           title: '🧪 TypeScript Action integration'
           status: success
           details: 'Bundled Node 24 summary action executed successfully.'
+      - name: 🧩 Verify local imports and action references
+        run: |
+          node --input-type=module <<'NODE'
+          import { existsSync, readFileSync, globSync } from 'node:fs';
+          import { dirname, resolve } from 'node:path';
+          import YAML from 'yaml';
+          const errors = [];
+          const files = globSync('src/**/*.{ts,tsx}');
+          for (const file of files) {
+            const content = readFileSync(file, 'utf8');
+            const imports = [...content.matchAll(/(?:from\\s*|import\\s*\\(\\s*)['"]([^'"]+)['"]/g)];
+            for (const [, spec] of imports) {
+              if (!spec.startsWith('.')) continue;
+              const base = resolve(dirname(file), spec);
+              if (![base, base + '.ts', base + '.tsx', base + '.js', resolve(base, 'index.ts'), resolve(base, 'index.tsx')].some(existsSync)) {
+                errors.push(file + ': unresolved import ' + spec);
+              }
+            }
+          }
+          for (const file of [...globSync('.github/workflows/*.{yml,yaml}'), ...globSync('actions/**/action.{yml,yaml}')]) {
+            const doc = YAML.parseDocument(readFileSync(file, 'utf8'), { uniqueKeys: true });
+            for (const error of doc.errors) errors.push(file + ': ' + error.message);
+            const data = doc.toJS();
+            const jobs = Object.values(data?.jobs ?? {});
+            const steps = [...(data?.runs?.steps ?? []), ...jobs.flatMap(job => job?.steps ?? [])];
+            for (const step of steps) {
+              const local = step?.uses;
+              if (typeof local === 'string' && local.startsWith('./') && !existsSync(local)) {
+                errors.push(file + ': missing local action ' + local);
+              }
+            }
+          }
+          if (errors.length) {
+            for (const error of errors) console.error('::error::' + error);
+            process.exitCode = 1;
+          } else {
+            console.log('Verified ' + files.length + ' TypeScript files and local action references.');
+          }
+          NODE
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
