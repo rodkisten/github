@@ -1,59 +1,66 @@
 import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
+import { logger, style } from './logger.js';
+
+const DEFAULT_SHELL = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
 
 /**
- * Resultado básico da execução de um processo no shell.
+ * Basic result of a shell process execution.
  */
 export interface CommandResult {
-  /** Código de saída retornado pelo processo (`0` indica sucesso). */
+  /** Exit code returned by the process (`0` indicates success). */
   exitCode: number;
-  /** Tempo total de execução em milissegundos. */
+  /** Total execution duration in milliseconds. */
   durationMs: number;
 }
 
 /**
- * Resultado detalhado retornado por {@link cmd} e {@link CommandTask}.
+ * Detailed execution result returned by {@link cmd} and {@link CommandTask}.
  */
 export interface ShellResult extends CommandResult {
-  /** Comando final serializado que foi enviado ao shell. */
+  /** Final serialized command string sent to the shell. */
   command: string;
-  /** Saída padrão (`stdout`) capturada sem quebras de linha finais. */
+  /** Captured standard output (`stdout`) with trailing newlines trimmed. */
   stdout: string;
-  /** Saída de erro (`stderr`) capturada sem quebras de linha finais. */
+  /** Captured standard error (`stderr`) with trailing newlines trimmed. */
   stderr: string;
-  /** Combinação de `stdout` e `stderr` separados por quebra de linha. */
+  /** Combined `stdout` and `stderr` joined by a newline. */
   output: string;
 }
 
 /**
- * Opções de configuração para execução de comandos no shell.
+ * Configuration options for executing shell commands.
  */
 export interface CmdOptions {
-  /** Executável do shell a ser utilizado (padrão: `'/bin/bash'`). */
+  /** Shell executable to use (default: `'cmd.exe'` on Windows or `'/bin/bash'` on POSIX). */
   shell?: string;
-  /** Diretório de trabalho onde o comando será executado (padrão: `process.cwd()`). */
+  /** Working directory where the command will be executed (default: `process.cwd()`). */
   cwd?: string;
-  /** Variáveis de ambiente passadas para o processo filho (padrão: `process.env`). */
+  /** Environment variables passed to the child process (default: `process.env`). */
   env?: NodeJS.ProcessEnv;
   /**
-   * Modo de I/O do processo filho:
-   * - `'pipe'`: captura `stdout` e `stderr` em memória (padrão).
-   * - `'inherit'`: faz streaming direto para o terminal/log atual.
+   * Child process I/O mode:
+   * - `'pipe'`: captures `stdout` and `stderr` in memory (default).
+   * - `'inherit'`: streams output directly to the current terminal/log.
    */
   stdio?: 'pipe' | 'inherit';
   /**
-   * Quando `true` (padrão), rejeita a Promise se `exitCode !== 0`.
-   * Quando `false`, resolve normalmente com o `exitCode` retornado.
+   * When `true` (default), rejects the Promise if `exitCode !== 0`.
+   * When `false`, resolves normally with the returned `exitCode`.
    */
   rejectOnNonZero?: boolean;
+  /**
+   * Optional label to wrap execution in a `logger.spin` indicator (only used when `stdio` is `'pipe'`).
+   */
+  spinner?: string;
 }
 
 /**
- * Escapa valores interpolados ou argumentos adicionados para uso seguro em shell POSIX,
- * prevenindo *command injection* e preservando espaços, aspas e caracteres especiais.
+ * Escapes interpolated values or appended arguments for safe shell usage,
+ * preventing command injection while preserving whitespace, quotes, and special characters.
  *
- * @param value - Valor primitivo ou array de valores a serem serializados.
- * @returns Argumento devidamente escapado para shell.
+ * @param value - Primitive value or array of values to serialize.
+ * @returns Properly escaped shell argument string.
  */
 function quoteShellArg(value: unknown): string {
   if (value === null || value === undefined) return "''";
@@ -63,12 +70,16 @@ function quoteShellArg(value: unknown): string {
   const str = String(value);
   if (str === '') return "''";
   if (/^[a-zA-Z0-9_./:-]+$/.test(str)) return str;
+
+  if (process.platform === 'win32') {
+    return `"${str.replace(/"/g, '\\"')}"`;
+  }
   return `'${str.replace(/'/g, `'\\''`)}'`;
 }
 
 /**
- * Monta a string de comando a partir de um *tagged template literal*,
- * escapando automaticamente todas as expressões interpoladas.
+ * Builds a command string from a tagged template literal,
+ * automatically escaping all interpolated expressions.
  */
 function buildInterpolatedCommand(
   strings: TemplateStringsArray,
@@ -81,13 +92,13 @@ function buildInterpolatedCommand(
 }
 
 /**
- * Executa uma string de comando fazendo streaming direto no terminal (`stdio: 'inherit'`).
- * Não lança exceção em caso de `exitCode !== 0` (apenas em erro de spawn ou sinal do SO).
+ * Executes a command string while streaming output directly to the terminal (`stdio: 'inherit'`).
+ * Does not throw on non-zero exit codes (only rejects on spawn errors or OS signals).
  *
- * @param command - Linha de comando completa a ser executada.
- * @param shell - Executável do shell (padrão: `'/bin/bash'`).
- * @param env - Variáveis de ambiente do processo (padrão: `process.env`).
- * @returns Promise resolvida com `exitCode` e `durationMs`.
+ * @param command - Full command line string to execute.
+ * @param shell - Shell executable path (default: `'cmd.exe'` on Windows or `'/bin/bash'` on POSIX).
+ * @param env - Process environment variables (default: `process.env`).
+ * @returns Promise resolving to `exitCode` and `durationMs`.
  *
  * @example
  * ```ts
@@ -99,48 +110,64 @@ function buildInterpolatedCommand(
  */
 export function runCommand(
   command: string,
-  shell = '/bin/bash',
+  shell = DEFAULT_SHELL,
   env: NodeJS.ProcessEnv = process.env
 ): Promise<CommandResult> {
+  logger.debug(`Running command (${shell}): ${command}`);
+
   return new Promise((resolve, reject) => {
     const started = performance.now();
-    const child = spawn(shell, ['-eo', 'pipefail', '-c', command], {
+    const child = spawn(command, {
+      cwd: process.cwd(),
+      shell,
       stdio: 'inherit',
       env,
     });
 
-    child.once('error', reject);
+    child.once('error', (error) => {
+      logger.error(`Failed to spawn command: ${error.message}`);
+      reject(error);
+    });
+
     child.once('close', (code, signal) => {
       const durationMs = Math.round(performance.now() - started);
       if (signal) {
-        return reject(new Error(`Command terminated by signal ${signal}`));
+        const signalError = new Error(`Command terminated by signal ${signal}`);
+        logger.error(signalError.message);
+        return reject(signalError);
       }
-      resolve({ exitCode: code ?? 1, durationMs });
+
+      const exitCode = code ?? 1;
+      logger.debug(`Command exited with code ${exitCode} in ${durationMs}ms`);
+      resolve({ exitCode, durationMs });
     });
   });
 }
 
 /**
- * Executa efetivamente o processo no shell e resolve ou rejeita com {@link ShellResult}.
+ * Spawns the underlying shell process and resolves or rejects with {@link ShellResult}.
  */
-function executeShellCommand(
+function spawnShellProcess(
   command: string,
   options: CmdOptions = {}
 ): Promise<ShellResult> {
   const {
-    shell = '/bin/bash',
+    shell = DEFAULT_SHELL,
     cwd = process.cwd(),
     env = process.env,
     stdio = 'pipe',
     rejectOnNonZero = true,
   } = options;
 
+  logger.debug(`Executing in ${cwd}: ${style.cyan(command)}`);
+
   return new Promise((resolve, reject) => {
     const started = performance.now();
-    const child = spawn(shell, ['-eo', 'pipefail', '-c', command], {
+    const child = spawn(command, {
       cwd,
-      env,
+      shell,
       stdio,
+      env,
     });
 
     const stdoutChunks: Buffer[] = [];
@@ -151,11 +178,17 @@ function executeShellCommand(
       child.stderr?.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
     }
 
-    child.once('error', reject);
+    child.once('error', (error) => {
+      logger.error(`Spawn error for "${command}": ${error.message}`);
+      reject(error);
+    });
+
     child.once('close', (code, signal) => {
       const durationMs = Math.round(performance.now() - started);
       if (signal) {
-        return reject(new Error(`Command terminated by signal ${signal}`));
+        const signalError = new Error(`Command terminated by signal ${signal}`);
+        logger.error(signalError.message);
+        return reject(signalError);
       }
 
       const exitCode = code ?? 1;
@@ -172,6 +205,8 @@ function executeShellCommand(
         durationMs,
       };
 
+      logger.debug(`Finished (${exitCode}) in ${durationMs}ms: ${command}`);
+
       if (rejectOnNonZero && exitCode !== 0) {
         const error = Object.assign(
           new Error(
@@ -179,6 +214,7 @@ function executeShellCommand(
           ),
           result
         );
+        logger.error(`Command failed (exit ${exitCode}): ${command}`);
         return reject(error);
       }
 
@@ -188,14 +224,27 @@ function executeShellCommand(
 }
 
 /**
- * Tarefa de comando **lazy** e **fluente** que implementa `PromiseLike<ShellResult>`.
+ * Wraps execution in a logger spinner when `options.spinner` is configured and output is piped.
+ */
+function executeShellCommand(
+  command: string,
+  options: CmdOptions = {}
+): Promise<ShellResult> {
+  if (options.spinner && (options.stdio ?? 'pipe') === 'pipe') {
+    return logger.spin(options.spinner, () => spawnShellProcess(command, options));
+  }
+  return spawnShellProcess(command, options);
+}
+
+/**
+ * **Lazy** and **fluent** command builder implementing `PromiseLike<ShellResult>`.
  *
- * O processo filho **não** é iniciado no momento da construção; ele só é disparado
- * quando `await` é usado diretamente sobre a instância ou quando {@link run} é invocado.
+ * The child process is **not** spawned upon instantiation; execution only starts
+ * when `await` is applied directly to the task or when {@link run} is called.
  *
  * @example
  * ```ts
- * // Monta a tarefa de forma lazy e encadeada
+ * // Build the task lazily using fluent chaining
  * const task = cmd('npx eslint')
  *   .cwd('./packages/api')
  *   .flag('--fix', isFixMode)
@@ -203,10 +252,10 @@ function executeShellCommand(
  *   .args(['src/index.ts', 'src/utils/logger.ts'])
  *   .nothrow();
  *
- * // Inspeciona o comando antes de executar
- * console.log('Executando:', task.toString());
+ * // Inspect the serialized command before running
+ * console.log('Running:', task.toString());
  *
- * // Dispara a execução via await
+ * // Trigger execution via await
  * const { exitCode, stdout, stderr } = await task;
  * ```
  */
@@ -217,11 +266,11 @@ export class CommandTask implements PromiseLike<ShellResult> {
   private executionPromise?: Promise<ShellResult>;
 
   /**
-   * Cria uma nova tarefa de comando lazy.
+   * Creates a new lazy command task.
    *
-   * @param baseCommand - Comando base ou string já interpolada.
-   * @param options - Opções iniciais de execução.
-   * @param initialArgs - Argumentos iniciais a serem escapados e anexados.
+   * @param baseCommand - Base command or pre-interpolated command string.
+   * @param options - Initial execution options.
+   * @param initialArgs - Initial arguments to escape and append.
    */
   constructor(baseCommand: string, options: CmdOptions = {}, initialArgs: unknown[] = []) {
     this.baseCommand = baseCommand;
@@ -232,14 +281,14 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Adiciona um único argumento ao comando (escapado automaticamente).
+   * Appends a single escaped argument to the command.
    *
-   * @param value - Valor do argumento.
-   * @returns A própria instância para encadeamento fluente.
+   * @param value - Argument value.
+   * @returns The current instance for fluent chaining.
    *
    * @example
    * ```ts
-   * await cmd('git checkout').arg('feat/nova-branch');
+   * await cmd('git checkout').arg('feat/new-branch');
    * ```
    */
   arg(value: unknown): this {
@@ -248,11 +297,11 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Adiciona múltiplos argumentos ao comando (escapados automaticamente).
-   * Arrays são achatados e valores `undefined`, `null` ou `false` são ignorados.
+   * Appends multiple escaped arguments to the command.
+   * Nested arrays are flattened, and `undefined`, `null`, or `false` values are ignored.
    *
-   * @param values - Lista de argumentos ou arrays de argumentos.
-   * @returns A própria instância para encadeamento fluente.
+   * @param values - List of arguments or argument arrays.
+   * @returns The current instance for fluent chaining.
    *
    * @example
    * ```ts
@@ -272,14 +321,14 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Adiciona uma flag CLI condicional ao comando.
-   * - Se `value` for `false`, `null` ou `undefined`, nada é adicionado.
-   * - Se `value` for `true`, adiciona apenas `name` (ex.: `--fix`).
-   * - Se `value` for `string` ou `number`, adiciona `name` seguido do valor escapado (ex.: `--branch 'feat/x'`).
+   * Appends a conditional CLI flag to the command.
+   * - If `value` is `false`, `null`, or `undefined`, nothing is appended.
+   * - If `value` is `true`, only `name` is appended (e.g., `--fix`).
+   * - If `value` is a `string` or `number`, both `name` and the escaped value are appended (e.g., `--branch 'feat/x'`).
    *
-   * @param name - Nome da flag (ex.: `'--fix'`, `'-m'`).
-   * @param value - Valor booleano ou escalar da flag.
-   * @returns A própria instância para encadeamento fluente.
+   * @param name - Flag name (e.g., `'--fix'`, `'-m'`).
+   * @param value - Boolean toggle or scalar flag value.
+   * @returns The current instance for fluent chaining.
    *
    * @example
    * ```ts
@@ -298,10 +347,10 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Define o diretório de trabalho (`cwd`) onde o comando será executado.
+   * Sets the working directory (`cwd`) for the command.
    *
-   * @param dir - Caminho do diretório.
-   * @returns A própria instância para encadeamento fluente.
+   * @param dir - Directory path.
+   * @returns The current instance for fluent chaining.
    */
   cwd(dir: string): this {
     this.options.cwd = dir;
@@ -309,10 +358,10 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Mescla variáveis de ambiente adicionais ao ambiente do processo.
+   * Merges additional environment variables into the child process environment.
    *
-   * @param vars - Mapa de variáveis de ambiente.
-   * @returns A própria instância para encadeamento fluente.
+   * @param vars - Key-value map of environment variables.
+   * @returns The current instance for fluent chaining.
    *
    * @example
    * ```ts
@@ -325,10 +374,10 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Define o executável do shell usado para interpretar o comando.
+   * Sets the shell executable used to run the command.
    *
-   * @param shellPath - Caminho do shell (ex.: `'/bin/sh'`, `'/bin/zsh'`).
-   * @returns A própria instância para encadeamento fluente.
+   * @param shellPath - Shell binary path (e.g., `'/bin/sh'`, `'/bin/zsh'`).
+   * @returns The current instance for fluent chaining.
    */
   shell(shellPath: string): this {
     this.options.shell = shellPath;
@@ -336,9 +385,9 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Configura `stdio: 'inherit'` para fazer streaming direto da saída no terminal/log.
+   * Configures `stdio: 'inherit'` to stream output directly to the terminal/log.
    *
-   * @returns A própria instância para encadeamento fluente.
+   * @returns The current instance for fluent chaining.
    */
   inherit(): this {
     this.options.stdio = 'inherit';
@@ -346,9 +395,9 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Configura `stdio: 'pipe'` (padrão) para capturar `stdout` e `stderr` em memória.
+   * Configures `stdio: 'pipe'` (default) to capture `stdout` and `stderr` in memory.
    *
-   * @returns A própria instância para encadeamento fluente.
+   * @returns The current instance for fluent chaining.
    */
   pipe(): this {
     this.options.stdio = 'pipe';
@@ -356,9 +405,20 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Evita que a Promise seja rejeitada caso o comando retorne `exitCode !== 0`.
+   * Displays a `logger.spin` indicator while the command executes (requires `pipe` stdio).
    *
-   * @returns A própria instância para encadeamento fluente.
+   * @param label - Spinner text label.
+   * @returns The current instance for fluent chaining.
+   */
+  spin(label: string): this {
+    this.options.spinner = label;
+    return this;
+  }
+
+  /**
+   * Prevents the Promise from rejecting when `exitCode !== 0`.
+   *
+   * @returns The current instance for fluent chaining.
    *
    * @example
    * ```ts
@@ -372,9 +432,9 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Serializa o comando base junto com todos os argumentos anexados.
+   * Serializes the base command together with all appended arguments.
    *
-   * @returns String final pronta para execução no shell.
+   * @returns Final command string ready for shell execution.
    */
   toString(): string {
     if (this.extraArgs.length === 0) return this.baseCommand;
@@ -383,9 +443,9 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Inicia a execução do comando (idempotente: chamadas subsequentes retornam a mesma Promise).
+   * Starts executing the command (idempotent: subsequent calls return the same Promise).
    *
-   * @returns Promise resolvida com {@link ShellResult}.
+   * @returns Promise resolving to {@link ShellResult}.
    */
   run(): Promise<ShellResult> {
     if (!this.executionPromise) {
@@ -395,7 +455,7 @@ export class CommandTask implements PromiseLike<ShellResult> {
   }
 
   /**
-   * Implementa a interface `PromiseLike`, permitindo usar `await task` diretamente.
+   * Implements `PromiseLike`, allowing `await task` directly.
    */
   then<TResult1 = ShellResult, TResult2 = never>(
     onfulfilled?: ((value: ShellResult) => TResult1 | PromiseLike<TResult1>) | null,
@@ -406,12 +466,12 @@ export class CommandTask implements PromiseLike<ShellResult> {
 }
 
 /**
- * Interface polimórfica para criação e execução de comandos shell.
+ * Polymorphic interface for creating and executing shell commands.
  */
 export interface CmdFactory {
   /**
-   * **Modo 1 — Tagged Template Literal:**
-   * Interpola variáveis e arrays escapando-os automaticamente contra *command injection*.
+   * **Mode 1 — Tagged Template Literal:**
+   * Interpolates variables and arrays while automatically escaping them against command injection.
    *
    * @example
    * ```ts
@@ -423,8 +483,8 @@ export interface CmdFactory {
   (strings: TemplateStringsArray, ...values: unknown[]): CommandTask;
 
   /**
-   * **Modo 2 — Chamada normal com string:**
-   * Aceita uma string de comando e opções opcionais, retornando uma {@link CommandTask} lazy.
+   * **Mode 2 — Standard Function Call with Command String:**
+   * Accepts a command string and optional settings, returning a lazy {@link CommandTask}.
    *
    * @example
    * ```ts
@@ -434,8 +494,8 @@ export interface CmdFactory {
   (command: string, options?: CmdOptions): CommandTask;
 
   /**
-   * **Modo 3 — Chamada normal com binário e array de argumentos:**
-   * Escapa cada item do array `args` e anexa ao comando base.
+   * **Mode 3 — Standard Function Call with Binary & Argument Array:**
+   * Escapes each element in `args` and appends it to the base command.
    *
    * @example
    * ```ts
@@ -445,8 +505,8 @@ export interface CmdFactory {
   (command: string, args: unknown[], options?: CmdOptions): CommandTask;
 
   /**
-   * **Modo 4 — Factory pré-configurada (Scoped Runner):**
-   * Cria uma nova instância de {@link CmdFactory} herdando as opções padrão informadas.
+   * **Mode 4 — Pre-configured Scoped Factory:**
+   * Creates a new {@link CmdFactory} instance inheriting the provided default options.
    *
    * @example
    * ```ts
@@ -460,7 +520,7 @@ export interface CmdFactory {
 }
 
 /**
- * Cria uma instância polimórfica de {@link CmdFactory} com opções padrão acumuláveis.
+ * Creates a polymorphic {@link CmdFactory} instance with cumulative default options.
  */
 function createCmd(defaultOptions: CmdOptions = {}): CmdFactory {
   const fn = (
@@ -495,29 +555,30 @@ function createCmd(defaultOptions: CmdOptions = {}): CmdFactory {
 }
 
 /**
- * Executor polimórfico, lazy e fluente de comandos shell.
+ * Polymorphic, lazy, and fluent shell command runner.
  *
- * Suporta 4 estilos de uso intercambiáveis:
+ * Supports 4 interchangeable usage styles:
  *
  * @example
  * ```ts
- * // 1. Tagged template literal (interpolação segura)
+ * // 1. Tagged template literal (safe auto-escaping)
  * const { stdout: sha } = await cmd`git rev-parse --short ${ref}`;
  *
- * // 2. Chamada normal como função (string ou comando + args[])
+ * // 2. Standard function call (string or command + args[])
  * await cmd('npm ci', { cwd: './web' });
  * await cmd('git', ['tag', '-a', version, '-m', `Release ${version}`]);
  *
- * // 3. Lazy + fluente (adiciona argumentos/flags depois e executa no await)
+ * // 3. Lazy + fluent (append arguments/flags later and execute on await)
  * const lintTask = cmd('npx eslint')
  *   .cwd('./web')
  *   .flag('--fix', shouldFix)
  *   .args(changedFiles)
+ *   .spin('Running ESLint')
  *   .nothrow();
  *
  * const { exitCode, stderr } = await lintTask;
  *
- * // 4. Factory pré-configurada para um diretório ou contexto
+ * // 4. Scoped factory pre-configured for a directory or context
  * const pkg = cmd({ cwd: './packages/shared', env: { FORCE_COLOR: '1' } });
  * await pkg`npm run build`;
  * await pkg('npm test').inherit();
