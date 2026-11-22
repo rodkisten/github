@@ -1,5 +1,5 @@
-name: Rod Actions Console
-description: Resolve central YAML settings and collect GitHub job/step notification candidates
+name: 🧩 Rod Actions Console
+description: Resolve central YAML settings, run optional formatting, and collect GitHub job/step notification candidates
 inputs:
   defaults:
     description: Path to the central rod-actions.yml (checkout rodkisten/github first)
@@ -17,6 +17,15 @@ inputs:
   format-base:
     description: Base ref for changed mode
     default: origin/main
+  format-lint:
+    description: Run linters during format phase
+    default: 'true'
+  commit-files-path:
+    description: Write JSON commit payload to this local path when format-mode is fix
+    required: false
+  results-file:
+    description: Write JSON format results to this local path
+    required: false
   report:
     description: Fetch workflow job and step conclusions
     required: false
@@ -34,6 +43,12 @@ outputs:
     description: Configured release mode
   event-count:
     description: Number of notification candidates
+  format-changed-files:
+    description: JSON array of files modified by the formatter
+  format-results:
+    description: JSON array of formatter/linter tool results
+  suggested-commit:
+    description: Suggested conventional commit message for formatted changes
 runs:
   using: node24
   main: ../../dist/console.js

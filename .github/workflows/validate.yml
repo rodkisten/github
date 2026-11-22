@@ -15,15 +15,20 @@ jobs:
       - name: 📦 Install
         run: npm install --no-audit --no-fund
       - name: 🌈 Install rodlog
-        uses: ./actions/setup-rodlog
+        uses: ./src/setup-rodlog
       - name: 🔎 Typecheck
         run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
       - name: 🧪 Vitest
         run: rodlog exec --mode=transform -- npm test
       - name: 🏗️ Bundle
         run: rodlog exec --mode=transform -- npm run build
+      - name: 🧪 Smoke-test Skip CI action
+        id: skip-smoke
+        uses: ./src/skip-ci
+        with:
+          commit-message: 'docs: update readme [skip ci]'
       - name: 🧪 Smoke-test bundled TypeScript Node CI action
-        uses: ./actions/node-ci
+        uses: ./src/node-ci
         with:
           working-directory: .
           test-command: node -e "process.exit(0)"
@@ -33,7 +38,7 @@ jobs:
       - name: 🧯 Smoke-test expected command failure
         id: expected-failure
         continue-on-error: true
-        uses: ./actions/node-ci
+        uses: ./src/node-ci
         with:
           test-command: node -e "process.exit(7)"
           run-build: 'false'
@@ -47,7 +52,7 @@ jobs:
           fi
           echo '🧯 Expected failure correctly propagated.' >> "$GITHUB_STEP_SUMMARY"
       - name: 📝 Smoke-test TypeScript CI summary
-        uses: ./actions/ci-summary
+        uses: ./src/ci-summary
         with:
           title: '🧪 TypeScript Action integration'
           status: success
@@ -55,14 +60,29 @@ jobs:
       - name: 📋 Verify artifacts and YAML
         run: |
           node --input-type=module <<'NODE'
-          import { readFileSync, existsSync, statSync } from 'node:fs';
-          import { globSync } from 'node:fs';
+          import { readFileSync, existsSync, statSync, globSync } from 'node:fs';
           import YAML from 'yaml';
           for (const path of [...globSync('actions/**/*.yml'), ...globSync('.github/workflows/*.yml')]) {
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
-          for (const name of ['paths-filter', 'node-ci', 'ci-summary', 'create-pr', 'commit']) {
+          const expectedBundles = [
+            'app-token',
+            'ci-summary',
+            'commit',
+            'console',
+            'console-run',
+            'create-pr',
+            'format',
+            'format-report',
+            'node-ci',
+            'paths-filter',
+            'publish',
+            'setup-node',
+            'setup-rodlog',
+            'skip-ci',
+          ];
+          for (const name of expectedBundles) {
             if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
               throw new Error(`Missing bundled ${name} action`);
             }

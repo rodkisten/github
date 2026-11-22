@@ -6,7 +6,7 @@ export interface NodeCiTask {
 
 export function getTasks(
   getInput: (name: string) => string,
-  getBooleanInput: (name: string) => boolean,
+  getBooleanInput: (name: string) => boolean
 ): NodeCiTask[] {
   return [
     { name: 'test', enabled: getBooleanInput('run-tests'), command: getInput('test-command') },

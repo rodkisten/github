@@ -1,24 +1,16 @@
 import * as core from '@actions/core';
+import { runAction } from '../utils/action.js';
+import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
 import { summary } from '../utils/summary.js';
 import { runCommand } from './run-command.js';
 
-interface ShellActionInputs {
-  command: string;
-  shell: string;
-  title: string;
-}
-
-function getInputs(): ShellActionInputs {
-  return {
-    command: core.getInput('command', { required: true }),
-    shell: core.getInput('shell') || '/bin/bash',
-    title: core.getInput('title') || 'Shell command',
-  };
-}
-
-async function main(): Promise<void> {
-  const inputs = getInputs();
+runAction('Shell Command', async () => {
+  const inputs = getInputs({
+    command: { required: true },
+    shell: { default: '/bin/bash' },
+    title: { default: 'Shell command' },
+  });
 
   logger.banner(inputs.title, `Shell: ${inputs.shell}`);
 
@@ -36,8 +28,10 @@ async function main(): Promise<void> {
 
   logger.divider('Outputs & Summary');
 
-  core.setOutput('exit-code', String(result.exitCode));
-  core.setOutput('duration-ms', String(result.durationMs));
+  setOutputs({
+    'exit-code': result.exitCode,
+    'duration-ms': result.durationMs,
+  });
 
   await summary
     .heading(inputs.title, 3)
@@ -57,10 +51,4 @@ async function main(): Promise<void> {
 
   logger.success(`${inputs.title} completed in ${style.bold(`${result.durationMs}ms`)}`);
   logger.divider('', '═');
-}
-
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  logger.error(message, 'Shell Command');
-  core.setFailed(message);
 });

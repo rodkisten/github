@@ -1,4 +1,4 @@
-name: Rod Universal Format
+name: 🎨 Rod Universal Format
 description: Detect changed or all repository files and format/lint using installed project tools
 inputs:
   mode:

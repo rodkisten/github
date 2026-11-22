@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
-import { cmd } from '../utils/cmd.js';
 import { logger } from '../utils/logger.js';
+import { execute, type ProcessResult } from './process.js';
 
 export type ShellDialect = 'bash' | 'posix' | 'zsh';
 
@@ -13,14 +13,7 @@ export interface ShellIssue {
   detail?: string;
 }
 
-export interface ToolRunResult {
-  ok: boolean;
-  missing?: boolean;
-  stdout: string;
-  stderr: string;
-}
-
-export type ToolRunner = (program: string, args: string[]) => Promise<ToolRunResult>;
+export type ToolRunner = (program: string, args: string[]) => Promise<ProcessResult> | ProcessResult;
 
 const ZSH_NAMES = new Set(['.zshrc', '.zprofile', '.zshenv', '.zlogin', '.zlogout']);
 const BASH_NAMES = new Set([
@@ -51,33 +44,11 @@ export function shellDialect(file: string): ShellDialect | undefined {
   return undefined;
 }
 
-const defaultRunner: ToolRunner = async (program, args) => {
-  try {
-    const res = await cmd(program, args).nothrow();
-    const missing = res.exitCode === 127 || /not found/i.test(res.stderr);
-
-    return {
-      ok: res.exitCode === 0,
-      missing,
-      stdout: res.stdout,
-      stderr: res.stderr,
-    };
-  } catch (error) {
-    const isMissing = (error as NodeJS.ErrnoException).code === 'ENOENT';
-    return {
-      ok: false,
-      missing: isMissing,
-      stdout: '',
-      stderr: error instanceof Error ? error.message : String(error),
-    };
-  }
-};
-
 export async function shellTools(
   file: string,
   mode: 'check' | 'fix',
   lint: boolean,
-  runner: ToolRunner = defaultRunner
+  runner: ToolRunner = execute
 ): Promise<ShellIssue[]> {
   const dialect = shellDialect(file);
   if (!dialect) return [];
@@ -121,7 +92,6 @@ export async function shellTools(
     });
   };
 
-  // shfmt does not parse Zsh syntax. Zsh uses zsh -n for syntax validation.
   if (dialect === 'zsh') {
     await invoke('zsh', ['-n', file]);
     return issues;
