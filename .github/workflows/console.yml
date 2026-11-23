@@ -175,7 +175,7 @@ jobs:
     steps:
       - name: ⏭️ Evaluate Skip CI
         id: skip
-        uses: rodkisten/github/actions/skip-ci@main
+        uses: rodkisten/github/src/skip-ci@main
         with:
           commit-message: ${{ github.event.head_commit.message || github.event.pull_request.title || '' }}
           actor: ${{ github.actor }}
@@ -196,7 +196,7 @@ jobs:
 
       - name: 🧩 Resolve Rod Actions Console config
         id: console
-        uses: rodkisten/github/actions/console@main
+        uses: rodkisten/github/src/console@main
         with:
           defaults: .rod-actions/config/rod-actions.yml
           config: .github/rod-actions.yml
@@ -229,17 +229,17 @@ jobs:
           sparse-checkout: config
 
       - name: 🟩 Setup Node
-        uses: rodkisten/github/actions/setup-node@main
+        uses: rodkisten/github/src/setup-node@main
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: 🌈 Setup rodlog
-        uses: rodkisten/github/actions/setup-rodlog@main
+        uses: rodkisten/github/src/setup-rodlog@main
 
       - name: 🎨 Run Console Formatter
         id: run-format
-        uses: rodkisten/github/actions/console@main
+        uses: rodkisten/github/src/console@main
         with:
           defaults: .rod-actions/config/rod-actions.yml
           config: .github/rod-actions.yml
@@ -260,7 +260,7 @@ jobs:
           secrets.BOT_APP_ID != '' &&
           secrets.BOT_PRIVATE_KEY != ''
         id: app
-        uses: rodkisten/github/actions/app-token@main
+        uses: rodkisten/github/src/app-token@main
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -268,7 +268,7 @@ jobs:
 
       - name: 📝 Commit formatted files via GitHub App
         if: steps.app.outcome == 'success'
-        uses: rodkisten/github/actions/commit@main
+        uses: rodkisten/github/src/commit@main
         with:
           token: ${{ steps.app.outputs.token }}
           branch: ${{ github.event.pull_request.head.ref }}
@@ -283,7 +283,7 @@ jobs:
           inputs.comment-format-report &&
           github.event_name == 'pull_request' &&
           steps.run-format.outcome != 'skipped'
-        uses: rodkisten/github/actions/format-report@main
+        uses: rodkisten/github/src/format-report@main
         with:
           github-token: ${{ github.token }}
           pr-number: ${{ github.event.pull_request.number }}
@@ -309,7 +309,7 @@ jobs:
     steps:
       - name: 🧬 Evaluate central path rules
         id: filter
-        uses: rodkisten/github/actions/paths-filter@main
+        uses: rodkisten/github/src/paths-filter@main
         with:
           token: ${{ github.token }}
           repository-key: ${{ inputs.repository-key }}
@@ -337,16 +337,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 🟩 Setup Node
-        uses: rodkisten/github/actions/setup-node@main
+        uses: rodkisten/github/src/setup-node@main
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ matrix.working-directory }}
 
       - name: 🌈 Setup rodlog
-        uses: rodkisten/github/actions/setup-rodlog@main
+        uses: rodkisten/github/src/setup-rodlog@main
 
       - name: 🧪 Run Node CI tasks
-        uses: rodkisten/github/actions/node-ci@main
+        uses: rodkisten/github/src/node-ci@main
         with:
           working-directory: ${{ matrix.working-directory }}
           scope: ${{ matrix.filter }}
@@ -359,7 +359,7 @@ jobs:
 
       - name: 📋 Publish Filter Summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@main
+        uses: rodkisten/github/src/ci-summary@main
         with:
           title: '🧬 CI · ${{ matrix.filter }}'
           status: ${{ job.status }}
@@ -418,7 +418,7 @@ jobs:
 
       - name: 🧩 Collect workflow events & generate summary
         id: report
-        uses: rodkisten/github/actions/console@main
+        uses: rodkisten/github/src/console@main
         with:
           defaults: .rod-actions/config/rod-actions.yml
           config: .github/rod-actions.yml
