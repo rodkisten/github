@@ -108,7 +108,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - uses: rodkisten/github/actions/format@main
+      - uses: rodkisten/github/src/format@main
         id: format
         with:
           mode: check
@@ -120,7 +120,7 @@ jobs:
 ### 2. Fix only modified files
 
 ```yaml
-- uses: rodkisten/github/actions/format@main
+- uses: rodkisten/github/src/format@main
   id: format
   with:
     mode: fix
@@ -132,7 +132,7 @@ jobs:
 ### 3. Audit the whole repository
 
 ```yaml
-- uses: rodkisten/github/actions/format@main
+- uses: rodkisten/github/src/format@main
   with:
     mode: check
     scope: all
@@ -141,7 +141,7 @@ jobs:
 ### 4. Manual full rewrite
 
 ```yaml
-- uses: rodkisten/github/actions/format@main
+- uses: rodkisten/github/src/format@main
   id: format
   with:
     mode: fix
@@ -154,7 +154,7 @@ jobs:
 ### 5. Save JSON results for a reporter
 
 ```yaml
-- uses: rodkisten/github/actions/format@main
+- uses: rodkisten/github/src/format@main
   id: format
   with:
     mode: check
