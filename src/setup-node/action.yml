@@ -20,20 +20,25 @@ inputs:
 outputs:
   node-version:
     description: Installed Node.js version
-    value: ${{ steps.workspace.outputs.node-version }}
+    value: ${{ steps.runtime.outputs.node-version }}
 runs:
   using: composite
   steps:
     - name: 🟩 Cache & Node.js runtime
+      id: runtime
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
         cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
         cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
     - name: 📦 Bootstrap Node workspace
-      id: workspace
-      uses: rodkisten/github/src/setup-node-runner@main
-      with:
-        node-version: ${{ inputs.node-version }}
-        working-directory: ${{ inputs.working-directory }}
-        install: ${{ inputs.install }}
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -f package-lock.json ]]; then
+          npm ci
+        else
+          npm install --no-audit --no-fund
+        fi
