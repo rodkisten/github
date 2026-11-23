@@ -7,7 +7,9 @@ inputs:
     default: https://rodkisten.github.io/rodlog/releases
 outputs:
   binary:
-    description: Absolute path to verified rodlog binary
+    description: Absolute path to verified rodlog binary (or fallback wrapper)
+  fallback:
+    description: "'true' when transparent fallback wrapper was installed"
 runs:
   using: node24
-  main: ../../dist/setup-rodlog.js
+  main: index.ts

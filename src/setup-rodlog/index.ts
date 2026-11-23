@@ -67,8 +67,6 @@ const { spawnSync } = require('node:child_process');
 
 const args = process.argv.slice(2);
 const dashDashIndex = args.indexOf('--');
-
-// Pega tudo que vem depois do "--" (ou todos os args se "--" não for passado)
 const commandArgs = dashDashIndex !== -1 ? args.slice(dashDashIndex + 1) : args;
 
 if (commandArgs.length === 0) {
@@ -149,7 +147,7 @@ runAction('Setup rodlog', async () => {
       const actualHash = createHash('sha256').update(binaryBuffer).digest('hex').toLowerCase();
       if (actualHash !== expectedHash) {
         throw new Error(
-          `SHA-256 checksum mismatch for ${binaryName}: expected ${expectedHash}, got ${actualHash}`
+`SHA-256 checksum mismatch for ${binaryName}: expected ${expectedHash}, got ${actualHash}`
         );
       }
 
