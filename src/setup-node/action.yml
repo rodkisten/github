@@ -32,7 +32,7 @@ runs:
         cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
     - name: 📦 Bootstrap Node workspace
       id: workspace
-      uses: rodkisten/github/actions/setup-node-runner@main
+      uses: rodkisten/github/src/setup-node-runner@main
       with:
         node-version: ${{ inputs.node-version }}
         working-directory: ${{ inputs.working-directory }}
