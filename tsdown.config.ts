@@ -1,45 +1,17 @@
-import { readdirSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { defineConfig } from 'tsdown';
 
-function discoverEntries(srcDir = 'src'): Record<string, string> {
-  const entries: Record<string, string> = {};
-
-  // Pastas internas compartilhadas que não são entrypoints de build
-  const ignoredDirs = new Set(['utils', 'types', 'shared', 'lib', 'helpers']);
-
-  for (const dirent of readdirSync(srcDir, { withFileTypes: true })) {
-    if (!dirent.isDirectory() || ignoredDirs.has(dirent.name)) continue;
-
-    const dirName = dirent.name;
-    const dirPath = join(srcDir, dirName);
-
-    for (const file of readdirSync(dirPath, { withFileTypes: true })) {
-      if (!file.isFile() || extname(file.name) !== '.ts' || file.name.endsWith('.d.ts')) {
-        continue;
-      }
-
-      const fileBase = basename(file.name, '.ts');
-      const relativePath = `src/${dirName}/${file.name}`;
-
-      if (fileBase === 'index') {
-        entries[dirName] = relativePath;
-      } else {
-        // Ex: src/format/report.ts -> 'format-report'
-        // Caso tenha arquivos auxiliares na pasta que não devem virar bundle (ex: helper.ts),
-        // prefixe-os com `_` (ex: `_helper.ts`) ou coloque em uma subpasta.
-        if (!fileBase.startsWith('_')) {
-          entries[`${dirName}-${fileBase}`] = relativePath;
-        }
-      }
-    }
-  }
-
-  return entries;
+function discoverActions(srcDir = 'src'): string[] {
+  return readdirSync(srcDir, { withFileTypes: true })
+    .filter((dirent) => dirent.isDirectory() && existsSync(join(srcDir, dirent.name, 'index.ts')))
+    .map((dirent) => dirent.name);
 }
 
+const actions = discoverActions('src');
+
 export default defineConfig({
-  entry: discoverEntries('src'),
+  entry: Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
 
   format: 'esm',
 
@@ -63,4 +35,21 @@ export default defineConfig({
     /^picomatch$/,
     /^handlebars$/,
   ],
+
+  onSuccess() {
+    for (const name of actions) {
+      const srcYml = join('src', name, 'action.yml');
+      if (!existsSync(srcYml)) continue;
+
+      const destDir = join('dist', name);
+      mkdirSync(destDir, { recursive: true });
+
+      const content = readFileSync(srcYml, 'utf8').replace(
+        new RegExp(`(\\.\\./)+dist/${name}\\.js`),
+        `../${name}.js`
+      );
+
+      writeFileSync(join(destDir, 'action.yml'), content, 'utf8');
+    }
+  },
 });
