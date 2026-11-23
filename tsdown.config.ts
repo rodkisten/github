@@ -9,9 +9,13 @@ function discoverActions(srcDir = 'src'): string[] {
 }
 
 const actions = discoverActions('src');
+const entries = {
+  ...Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
+  'format-report': './src/format/report.ts',
+};
 
 export default defineConfig({
-  entry: Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
+  entry: entries,
 
   format: 'esm',
 
