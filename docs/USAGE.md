@@ -17,7 +17,7 @@ Use the App token from `actions/app-token`. The action searches for an open PR w
 ```yaml
 - name: 🔐 Authenticate Rod App
   id: app
-  uses: rodkisten/github/actions/app-token@main
+  uses: rodkisten/github/src/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
@@ -25,7 +25,7 @@ Use the App token from `actions/app-token`. The action searches for an open PR w
     permission-pull-requests: write
 - name: 🤖 Create or update PR
   id: pr
-  uses: rodkisten/github/actions/create-pr@main
+  uses: rodkisten/github/src/create-pr@main
   with:
     token: ${{ steps.app.outputs.token }}
     head: automation/update-lockfile
@@ -46,14 +46,14 @@ The commit action creates one atomic Git commit containing all supplied file cha
 ```yaml
 - name: 🔐 Authenticate Rod App
   id: app
-  uses: rodkisten/github/actions/app-token@main
+  uses: rodkisten/github/src/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
     permission-contents: write
 - name: 📝 Commit generated files
   id: commit
-  uses: rodkisten/github/actions/commit@main
+  uses: rodkisten/github/src/commit@main
   with:
     token: ${{ steps.app.outputs.token }}
     branch: automation/generated-docs
@@ -158,7 +158,7 @@ Inputs include the central config source (`config-repository`, `config-ref`, `co
 ## ⏭️ Skip expensive work
 ```yaml
 - id: skip
-  uses: rodkisten/github/actions/skip-ci@main
+  uses: rodkisten/github/src/skip-ci@main
   with:
     commit-message: ${{ github.event.head_commit.message }}
 - if: steps.skip.outputs.skip != 'true'
@@ -169,7 +169,7 @@ For pull requests, resolve the head commit message explicitly: `head_commit.mess
 ## 🔐 GitHub App authentication
 ```yaml
 - id: auth
-  uses: rodkisten/github/actions/app-token@main
+  uses: rodkisten/github/src/app-token@main
   with:
     app-id: ${{ secrets.BOT_APP_ID }}
     private-key: ${{ secrets.BOT_PRIVATE_KEY }}
