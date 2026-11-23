@@ -121,6 +121,22 @@ jobs:
             echo "✅ $file"
           done
 
+      - name: 📦 Publish compiled action bundles to main
+        shell: bash
+        env:
+          GIT_AUTHOR_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+          GIT_AUTHOR_EMAIL: ${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+          GIT_COMMITTER_EMAIL: ${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          # Commit all generated JS and chunks, not only action entrypoints.
+          git add -f -A dist/
+          if ! git diff --cached --quiet; then
+            git commit -m "build(actions): publish executable bundles [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: 🚀 Semantic Release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
