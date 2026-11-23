@@ -13,15 +13,13 @@ jobs:
         with:
           node-version: '24'
       - name: 📦 Install
-        run: npm install --no-audit --no-fund
-      - name: 🌈 Install rodlog
-        uses: ./src/setup-rodlog
+        run: npm ci --no-audit --no-fund
       - name: 🔎 Typecheck
-        run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
+        run: npm run typecheck
       - name: 🧪 Vitest
-        run: rodlog exec --mode=transform -- npm test
+        run: npm test
       - name: 🏗️ Bundle
-        run: rodlog exec --mode=transform -- npm run build
+        run: npm run build
       - name: 🧪 Smoke-test Skip CI action
         id: skip-smoke
         uses: ./src/skip-ci
@@ -62,7 +60,7 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync, existsSync, statSync, globSync } from 'node:fs';
           import YAML from 'yaml';
-          for (const path of [...globSync('actions/**/*.yml'), ...globSync('.github/workflows/*.yml')]) {
+          for (const path of [...globSync('src/**/action.yml'), ...globSync('.github/workflows/*.yml')]) {
             YAML.parse(readFileSync(path, 'utf8'));
             console.log('✅', path);
           }
