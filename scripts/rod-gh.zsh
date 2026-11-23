@@ -15,7 +15,10 @@ rod-git-push() {
   emulate -L zsh
   local token
   token="$(rod-gh-token)" || return
-  # GitHub CLI supplies temporary Git credentials without storing the token in .git/config.
-  GH_TOKEN="$token" GITHUB_TOKEN="$token" command gh auth setup-git || return
-  GH_TOKEN="$token" GITHUB_TOKEN="$token" command git push "$@"
+  # Apply the GitHub CLI credential helper to this invocation only.
+  # Never mutate global Git config or persist the short-lived installation token.
+  GH_TOKEN="$token" GITHUB_TOKEN="$token" command git \
+    -c credential.helper= \
+    -c 'credential.helper=!gh auth git-credential' \
+    push "$@"
 }
