@@ -15,13 +15,11 @@ export BOT_PERMISSIONS='contents:write,actions:write' # optional: only permissio
 export ROD_GITHUB_REPO_DIR="$HOME/github" # point to your local checkout
 source "$ROD_GITHUB_REPO_DIR/scripts/rod-gh.zsh"
 
-rod-gh api user
+rod-gh api repos/rodkisten/github --jq .full_name
 rod-gh workflow run validate.yml -R rodkisten/github --ref main
 rod-gh run list -R rodkisten/github --limit 5
 rod-git-push origin main
 ```
-
-**Important:** `rod-gh api user` is not a valid verification for installation tokens, which authenticate as an installation rather than a user. Verify with `rod-gh api repos/rodkisten/github --jq .full_name` instead.
 
 If the app is installed on a personal account, `BOT_OWNER` is the personal username; if it is installed on an organization, it is the organization name. `BOT_INSTALLATION_ID` can be supplied explicitly to avoid installation discovery.
 
