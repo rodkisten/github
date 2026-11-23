@@ -79,6 +79,21 @@ jobs:
             'setup-rodlog',
             'skip-ci',
           ];
+          // Verify every Node action manifest points to an existing compiled entrypoint.
+          for (const manifest of globSync('src/**/action.yml')) {
+            const action = YAML.parse(readFileSync(manifest, 'utf8'));
+            if (action?.runs?.using !== 'node24') continue;
+            const main = action.runs.main;
+            if (typeof main !== 'string') {
+              throw new Error(`Missing runs.main in ${manifest}`);
+            }
+            const { resolve, dirname } = await import('node:path');
+            const entry = resolve(dirname(manifest), main);
+            if (!existsSync(entry) || !statSync(entry).isFile() || !statSync(entry).size) {
+              throw new Error(`Missing executable bundle for ${manifest}: ${entry}`);
+            }
+            console.log('✅ Action entrypoint:', manifest, '→', entry);
+          }
           for (const name of expectedBundles) {
             if (!existsSync(`dist/${name}.js`) || !statSync(`dist/${name}.js`).size) {
               throw new Error(`Missing bundled ${name} action`);
