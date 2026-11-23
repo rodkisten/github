@@ -25,7 +25,7 @@ If the app is installed on a personal account, `BOT_OWNER` is the personal usern
 
 Keep `BOT_PERMISSIONS` narrow: `contents:write` for pushes; `actions:write` for workflow dispatch; `pull_requests:write` for PR mutations. The App installation must have those permissions granted.
 
-The wrapper obtains a fresh token per command, never writes it to the repository, and does not alter your default `gh auth` identity. For Git push, `rod-git-push` configures GitHub CLI's credential helper and passes the token only to the push process.
+The wrapper obtains a fresh token per command, never writes it to the repository, and does not alter your default `gh auth` identity. For Git push, `rod-git-push` uses GitHub CLI's credential helper only for that Git invocation (via `git -c`), without changing global Git configuration. The temporary token is passed through the process environment, not embedded in the remote URL.
 
 ## GitHub Actions
 
