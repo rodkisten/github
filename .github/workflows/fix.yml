@@ -1,0 +1,380 @@
+name: 🛠️ Fix Setup Rodlog & Build Config
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    name: 🔧 Apply updates & commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🤖 Authenticate Rod GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: 🟩 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: ✍️ Update setup-rodlog, tsdown config & workflows
+        run: |
+          node << 'EOF'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          // 1. Atualiza src/setup-rodlog/index.ts com fallback transparente e caixa de aviso
+          fs.mkdirSync('src/setup-rodlog', { recursive: true });
+          fs.writeFileSync('src/setup-rodlog/index.ts', `import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { tmpdir } from 'node:os';
+          import { join } from 'node:path';
+          import * as core from '@actions/core';
+          import { runAction } from '../utils/action.js';
+          import { cmd } from '../utils/cmd.js';
+          import { getInputs, setOutputs } from '../utils/inputs.js';
+          import { logger, style } from '../utils/logger.js';
+          import { summary } from '../utils/summary.js';
+
+          function resolvePlatformBinary(): string {
+            const platform = process.platform;
+            const arch = process.arch;
+
+            const osMap: Record<string, string> = {
+              linux: 'linux',
+              darwin: 'darwin',
+            };
+
+            const archMap: Record<string, string> = {
+              x64: 'amd64',
+              arm64: 'arm64',
+            };
+
+            const os = osMap[platform];
+            const cpu = archMap[arch];
+
+            if (!os) throw new Error(\`Unsupported OS for rodlog: \${platform}\`);
+            if (!cpu) throw new Error(\`Unsupported architecture for rodlog: \${arch}\`);
+
+            return \`rodlog_\${os}_\${cpu}\`;
+          }
+
+          function printFallbackWarningBox(attemptedUrl: string, reason: string): void {
+            const width = 76;
+            const border = '═'.repeat(width);
+            const padLine = (text: string) => {
+              const clean = text.slice(0, width - 2);
+              return \`║ \${clean.padEnd(width - 2)} ║\`;
+            };
+
+            const box = [
+              '',
+              \`╔\${border}╗\`,
+              padLine('⚠️  AVISO: USANDO FALLBACK TRANSPARENTE DO RODLOG'),
+              \`╠\${border}╣\`,
+              padLine('Não foi possível baixar ou validar o binário oficial do rodlog.'),
+              padLine(\`URL tentada: \${attemptedUrl}\`),
+              padLine(\`Motivo: \${reason}\`),
+              padLine(''),
+              padLine('Um wrapper transparente foi criado: tudo após "--" será executado'),
+              padLine('diretamente sem interromper o pipeline.'),
+              \`╚\${border}╝\`,
+              '',
+            ].join('\\n');
+
+            console.warn(style.yellow ? style.yellow(style.bold(box)) : box);
+            core.warning(
+              \`[rodlog fallback] Falha ao baixar de \${attemptedUrl} (\${reason}). Usando wrapper transparente.\`
+            );
+          }
+
+          function installFallbackScript(targetPath: string): void {
+            const fallbackScript = \`#!/usr/bin/env node
+          const { spawnSync } = require('node:child_process');
+
+          const args = process.argv.slice(2);
+          const dashDashIndex = args.indexOf('--');
+          const commandArgs = dashDashIndex !== -1 ? args.slice(dashDashIndex + 1) : args;
+
+          if (commandArgs.length === 0) {
+            console.warn('[rodlog-fallback] Nenhum comando encontrado após "--".');
+            process.exit(0);
+          }
+
+          const [command, ...cmdArgs] = commandArgs;
+          const result = spawnSync(command, cmdArgs, {
+            stdio: 'inherit',
+            shell: process.platform === 'win32',
+          });
+
+          if (result.error) {
+            console.error(\\\`[rodlog-fallback] Erro ao executar "\\\${command}": \\\${result.error.message}\\\`);
+            process.exit(1);
+          }
+
+          process.exit(result.status ?? 1);
+          \`;
+
+            writeFileSync(targetPath, fallbackScript, 'utf8');
+            chmodSync(targetPath, 0o755);
+          }
+
+          runAction('Setup rodlog', async () => {
+            const inputs = getInputs({
+              'release-base': { default: 'https://rodkisten.github.io/rodlog/releases' },
+            });
+
+            const baseUrl = inputs['release-base'].replace(/\\/$/, '');
+            const runnerTemp = process.env.RUNNER_TEMP || tmpdir();
+            const targetPath = join(runnerTemp, 'rodlog');
+
+            let binaryName = 'unknown';
+            let attemptedUrl = baseUrl;
+            let usedFallback = false;
+            let fallbackReason = '';
+
+            try {
+              binaryName = resolvePlatformBinary();
+              attemptedUrl = \`\${baseUrl}/\${binaryName}\`;
+
+              logger.banner('Setup rodlog', \`\${binaryName} · SHA-256 verified\`);
+
+              await logger.step('Download & verify rodlog binary', async () => {
+                logger.item('Mirror', baseUrl);
+                logger.item('Artifact', binaryName, true);
+
+                const checksumsUrl = \`\${baseUrl}/checksums.txt\`;
+                attemptedUrl = checksumsUrl;
+
+                const checksumsText = await logger.spin('Fetching checksums.txt', async () => {
+                  const res = await fetch(checksumsUrl);
+                  if (!res.ok) throw new Error(\`Failed to fetch checksums.txt (\${res.status})\`);
+                  return res.text();
+                });
+
+                const expectedLine = checksumsText
+                  .split(/\\r?\\n/)
+                  .find((line) => new RegExp(\`^[a-fA-F0-9]{64}\\\\s+\${binaryName}$\`).test(line.trim()));
+
+                if (!expectedLine) {
+                  throw new Error(\`Checksum entry not found for \${binaryName}\`);
+                }
+
+                const expectedHash = expectedLine.trim().split(/\\s+/)[0].toLowerCase();
+
+                const binaryUrl = \`\${baseUrl}/\${binaryName}\`;
+                attemptedUrl = binaryUrl;
+
+                const binaryBuffer = await logger.spin(\`Downloading \${binaryName}\`, async () => {
+                  const res = await fetch(binaryUrl);
+                  if (!res.ok) throw new Error(\`Failed to download \${binaryName} (\${res.status})\`);
+                  return Buffer.from(await res.arrayBuffer());
+                });
+
+                const actualHash = createHash('sha256').update(binaryBuffer).digest('hex').toLowerCase();
+                if (actualHash !== expectedHash) {
+                  throw new Error(
+                    \`SHA-256 checksum mismatch for \${binaryName}: expected \${expectedHash}, got \${actualHash}\`
+                  );
+                }
+
+                mkdirSync(runnerTemp, { recursive: true });
+                const stageFile = join(runnerTemp, \`.rodlog-\${Date.now()}\`);
+                try {
+                  writeFileSync(stageFile, binaryBuffer);
+                  chmodSync(stageFile, 0o755);
+                  writeFileSync(targetPath, readFileSync(stageFile));
+                  chmodSync(targetPath, 0o755);
+                } finally {
+                  rmSync(stageFile, { force: true });
+                }
+
+                core.addPath(runnerTemp);
+                const versionRes = await cmd(\`"\${targetPath}" version\`).nothrow();
+                logger.item('Verified SHA-256', \`\${expectedHash.slice(0, 12)}...\`);
+                logger.item('Installed binary', targetPath);
+                logger.item('Version', versionRes.stdout || 'unknown', true);
+              });
+            } catch (err) {
+              usedFallback = true;
+              fallbackReason = err instanceof Error ? err.message : String(err);
+
+              printFallbackWarningBox(attemptedUrl, fallbackReason);
+
+              mkdirSync(runnerTemp, { recursive: true });
+              installFallbackScript(targetPath);
+              core.addPath(runnerTemp);
+
+              logger.item('Fallback wrapper', targetPath, true);
+            }
+
+            setOutputs({
+              binary: targetPath,
+              fallback: String(usedFallback),
+            });
+
+            if (usedFallback) {
+              await summary.publish('⚠️ rodlog ready (fallback mode)', [
+                {
+                  text: \`Could not download \\\`rodlog\\\` from \\\`\${attemptedUrl}\\\` (\${fallbackReason}). Installed transparent passthrough wrapper instead.\`,
+                },
+              ]);
+              logger.success(\`rodlog fallback wrapper installed at \${style.bold(targetPath)}\`);
+            } else {
+              await summary.publish('🌈 rodlog ready', [
+                {
+                  text: \`Verified \\\`\${binaryName}\\\` against the published SHA-256 checksum.\`,
+                },
+              ]);
+              logger.success(\`rodlog installed at \${style.bold(targetPath)}\`);
+            }
+
+            logger.divider('', '═');
+          });
+          `.replace(/^          /gm, ''));
+
+          // 2. Atualiza src/setup-rodlog/action.yml para rodar direto em TS no node24
+          fs.writeFileSync('src/setup-rodlog/action.yml', `name: 🌈 Setup rodlog
+          description: Install the published rodlog binary with SHA-256 verification
+          inputs:
+            release-base:
+              description: Trusted HTTPS mirror with rodlog binaries and checksums
+              required: false
+              default: https://rodkisten.github.io/rodlog/releases
+          outputs:
+            binary:
+              description: Absolute path to verified rodlog binary (or fallback wrapper)
+            fallback:
+              description: "'true' when transparent fallback wrapper was installed"
+          runs:
+            using: node24
+            main: index.ts
+          `.replace(/^          /gm, ''));
+
+          // 3. Detecta o arquivo tsdown.config.* existente e atualiza
+          const tsdownFile = ['tsdown.config.ts', 'tsdown.config.mts', 'tsdown.config.mjs']
+            .find((f) => fs.existsSync(f)) || 'tsdown.config.ts';
+
+          fs.writeFileSync(tsdownFile, `import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { basename, extname, join } from 'node:path';
+          import { defineConfig } from 'tsdown';
+
+          function discoverEntries(srcDir = 'src'): Record<string, string> {
+            const entries: Record<string, string> = {};
+            const ignoredDirs = new Set(['utils', 'types', 'shared', 'lib', 'helpers']);
+
+            for (const dirent of readdirSync(srcDir, { withFileTypes: true })) {
+              if (!dirent.isDirectory() || ignoredDirs.has(dirent.name)) continue;
+
+              const dirName = dirent.name;
+              const dirPath = join(srcDir, dirName);
+
+              if (!existsSync(join(dirPath, 'index.ts'))) continue;
+
+              for (const file of readdirSync(dirPath, { withFileTypes: true })) {
+                if (!file.isFile() || extname(file.name) !== '.ts' || file.name.endsWith('.d.ts')) {
+                  continue;
+                }
+
+                const fileBase = basename(file.name, '.ts');
+                if (fileBase.startsWith('_')) continue;
+
+                const relativePath = \`./src/\${dirName}/\${file.name}\`;
+
+                if (fileBase === 'index') {
+                  entries[dirName] = relativePath;
+                } else {
+                  const suffix = dirName === 'console' && fileBase === 'runner' ? 'run' : fileBase;
+                  entries[\`\${dirName}-\${suffix}\`] = relativePath;
+                }
+              }
+            }
+
+            return entries;
+          }
+
+          const entries = discoverEntries('src');
+
+          export default defineConfig({
+            entry: entries,
+            format: 'esm',
+            outExtensions: () => ({ js: '.js' }),
+            platform: 'node',
+            target: 'node24',
+            outDir: 'dist',
+            clean: true,
+            noExternal: [
+              /^@actions\\//,
+              /^@octokit\\//,
+              /^yaml$/,
+              /^picomatch$/,
+              /^handlebars$/,
+            ],
+            onSuccess() {
+              for (const entryName of Object.keys(entries)) {
+                const srcYml = join('src', entryName, 'action.yml');
+                if (!existsSync(srcYml)) continue;
+
+                const destDir = join('dist', entryName);
+                mkdirSync(destDir, { recursive: true });
+
+                const content = readFileSync(srcYml, 'utf8')
+                  .replace(new RegExp(\`(\\\\.\\\\./)+dist/\${entryName}\\\\.js\`), \`../\${entryName}.js\`)
+                  .replace(/^(\\s*main:\\s*)index\\.ts$/m, \`$1../\${entryName}.js\`);
+
+                writeFileSync(join(destDir, 'action.yml'), content, 'utf8');
+              }
+            },
+          });
+          `.replace(/^          /gm, ''));
+
+          // 4. Corrige uses: ../dist/setup-rodlog -> uses: ./src/setup-rodlog nos workflows
+          const wfDir = '.github/workflows';
+          if (fs.existsSync(wfDir)) {
+            for (const file of fs.readdirSync(wfDir)) {
+              if (!file.endsWith('.yml') && !file.endsWith('.yaml')) continue;
+              const p = path.join(wfDir, file);
+              const orig = fs.readFileSync(p, 'utf8');
+              const next = orig.replace(/uses:\s*\.\.\/dist\/setup-rodlog/g, 'uses: ./src/setup-rodlog');
+              if (orig !== next) fs.writeFileSync(p, next, 'utf8');
+            }
+          }
+          EOF
+
+      - name: 🏗️ Verify build
+        run: npm run build
+
+      - name: 💾 Commit and push changes
+        env:
+          GIT_AUTHOR_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+          GIT_AUTHOR_EMAIL: ${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
+          GIT_COMMITTER_EMAIL: ${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add src/setup-rodlog tsdown.config.* .github/workflows/
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração pendente para commitar."
+            exit 0
+          fi
+          git commit -m "fix(setup-rodlog): add transparent fallback and auto-discover build entries"
+          git push
