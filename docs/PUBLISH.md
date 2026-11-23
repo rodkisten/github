@@ -15,7 +15,7 @@ Use a GitHub App installation token when commits must trigger downstream workflo
 ## Direct commit
 
 ```yaml
-- uses: rodkisten/github/actions/publish@main
+- uses: rodkisten/github/src/publish@main
   id: publish
   with:
     token: ${{ steps.app-token.outputs.token }}
@@ -27,7 +27,7 @@ Use a GitHub App installation token when commits must trigger downstream workflo
 ## Pull request
 
 ```yaml
-- uses: rodkisten/github/actions/publish@main
+- uses: rodkisten/github/src/publish@main
   id: publish
   with:
     token: ${{ steps.app-token.outputs.token }}
