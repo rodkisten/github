@@ -78,7 +78,7 @@ jobs:
         run: npm ci
 
       - name: 🌈 Install rodlog
-        uses: ./src/setup-rodlog
+        uses: ../dist/setup-rodlog
 
       - name: 🔎 Typecheck
         run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
