@@ -1,37 +1,45 @@
+import { readdirSync } from 'node:fs';
+import { basename, extname, join } from 'node:path';
 import { defineConfig } from 'tsdown';
 
+function discoverEntries(srcDir = 'src'): Record<string, string> {
+  const entries: Record<string, string> = {};
+
+  // Pastas internas compartilhadas que não são entrypoints de build
+  const ignoredDirs = new Set(['utils', 'types', 'shared', 'lib', 'helpers']);
+
+  for (const dirent of readdirSync(srcDir, { withFileTypes: true })) {
+    if (!dirent.isDirectory() || ignoredDirs.has(dirent.name)) continue;
+
+    const dirName = dirent.name;
+    const dirPath = join(srcDir, dirName);
+
+    for (const file of readdirSync(dirPath, { withFileTypes: true })) {
+      if (!file.isFile() || extname(file.name) !== '.ts' || file.name.endsWith('.d.ts')) {
+        continue;
+      }
+
+      const fileBase = basename(file.name, '.ts');
+      const relativePath = `src/${dirName}/${file.name}`;
+
+      if (fileBase === 'index') {
+        entries[dirName] = relativePath;
+      } else {
+        // Ex: src/format/report.ts -> 'format-report'
+        // Caso tenha arquivos auxiliares na pasta que não devem virar bundle (ex: helper.ts),
+        // prefixe-os com `_` (ex: `_helper.ts`) ou coloque em uma subpasta.
+        if (!fileBase.startsWith('_')) {
+          entries[`${dirName}-${fileBase}`] = relativePath;
+        }
+      }
+    }
+  }
+
+  return entries;
+}
+
 export default defineConfig({
-  entry: {
-    // 🔐 Authentication & lifecycle
-    'app-token': 'src/app-token/index.ts',
-    'skip-ci': 'src/skip-ci/index.ts',
-
-    // 🟩 Workspace & environment setup
-    'setup-node': 'src/setup-node/index.ts',
-    'setup-rodlog': 'src/setup-rodlog/index.ts',
-
-    // 🔎 Repository automation
-    'paths-filter': 'src/paths-filter/index.ts',
-
-    // 🧪 CI orchestration
-    'node-ci': 'src/node-ci/index.ts',
-    'ci-summary': 'src/ci-summary/index.ts',
-
-    // 🎨 Formatting & reporting
-    format: 'src/format/index.ts',
-    'format-report': 'src/format/report.ts',
-
-    // 🧩 Console & instrumentation
-    console: 'src/console/index.ts',
-    'console-run': 'src/console/runner.ts',
-
-    // 🤖 GitHub App operations
-    'create-pr': 'src/create-pr/index.ts',
-    commit: 'src/commit/index.ts',
-
-    // 📤 Publication and templates
-    publish: 'src/publish/index.ts',
-  },
+  entry: discoverEntries('src'),
 
   format: 'esm',
 
