@@ -11,7 +11,7 @@
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: rodkisten/github/actions/setup-rodlog@main
+  - uses: rodkisten/github/src/setup-rodlog@main
   - run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
   - run: rodlog exec --mode=transform -- npm run build
 ```
