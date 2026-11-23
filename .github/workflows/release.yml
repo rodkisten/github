@@ -77,17 +77,15 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🌈 Install rodlog
-        uses: ./src/setup-rodlog
 
       - name: 🔎 Typecheck
-        run: rodlog exec --tool=typescript --mode=transform -- npm run typecheck
+        run: npm run typecheck
 
       - name: 🧪 Vitest
-        run: rodlog exec --mode=transform -- npm test
+        run: npm test
 
       - name: 🏗️ Build all bundles
-        run: rodlog exec --mode=transform -- npm run build
+        run: npm run build
 
       - name: 📋 Verify bundles
         shell: bash
