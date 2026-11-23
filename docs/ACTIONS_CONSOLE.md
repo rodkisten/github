@@ -71,7 +71,7 @@ steps:
       path: .rod-actions
   - name: Collect console events
     if: always()
-    uses: rodkisten/github/actions/console@main
+    uses: rodkisten/github/src/console@main
     with:
       defaults: .rod-actions/config/rod-actions.yml
       config: .github/rod-actions.yml
@@ -86,7 +86,7 @@ steps:
 
 ```yaml
 - name: 🧩 Instrument build
-  uses: rodkisten/github/actions/console-run@main
+  uses: rodkisten/github/src/console-run@main
   with:
     title: Build
     command: npm run build
@@ -113,7 +113,7 @@ The Console reuses the shared TypeScript formatter implementation, rather than s
   with:
     repository: rodkisten/github
     path: .rod-actions
-- uses: rodkisten/github/actions/console@main
+- uses: rodkisten/github/src/console@main
   with:
     defaults: .rod-actions/config/rod-actions.yml
     format-mode: check
