@@ -118,12 +118,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 🟩 Setup Node
-        uses: rodkisten/github/actions/setup-node@main
+        uses: rodkisten/github/src/setup-node@main
         with:
           node-version: ${{ inputs.node-version }}
           working-directory: ${{ matrix.working-directory }}
       - name: 🧪 Test and build affected area
-        uses: rodkisten/github/actions/node-ci@main
+        uses: rodkisten/github/src/node-ci@main
         with:
           working-directory: ${{ matrix.working-directory }}
           scope: ${{ matrix.filter }}
@@ -135,7 +135,7 @@ jobs:
           run-lint: ${{ matrix.run-lint }}
       - name: 📋 Filter summary
         if: always()
-        uses: rodkisten/github/actions/ci-summary@main
+        uses: rodkisten/github/src/ci-summary@main
         with:
           title: '🧬 Filtered CI · ${{ matrix.filter }}'
           status: ${{ job.status }}
