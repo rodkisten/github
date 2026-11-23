@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - uses: rodkisten/github/actions/format@main
+      - uses: rodkisten/github/src/format@main
         id: format
         with:
           mode: check
@@ -109,7 +109,7 @@ Use least-privilege permissions. Never expose App tokens to untrusted PR code. P
 ### 2. Fix the entire repository
 
 ```yaml
-- uses: rodkisten/github/actions/format@main
+- uses: rodkisten/github/src/format@main
   id: format
   with:
     mode: fix
@@ -142,7 +142,7 @@ jobs:
   with:
     repository: rodkisten/github
     path: .rod-actions
-- uses: rodkisten/github/actions/console@main
+- uses: rodkisten/github/src/console@main
   with:
     defaults: .rod-actions/config/rod-actions.yml
     format-mode: check
