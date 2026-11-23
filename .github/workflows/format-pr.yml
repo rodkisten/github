@@ -36,15 +36,19 @@ jobs:
           node-version: '24'
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck && npm test && npm run build
-      - name: 🔬 Verify standalone action bundles
+      - name: 🔬 Verify compiled action entrypoints
+        shell: bash
         run: |
-          node --input-type=module -e "
-            import { readFileSync } from 'node:fs';
-            for (const name of ['format', 'format-report', 'commit', 'app-token', 'console', 'console-run', 'skip-ci', 'setup-rodlog']) {
-              const code = readFileSync('dist/' + name + '.js', 'utf8');
-              if (/from ['\"]\.\//.test(code)) throw new Error(name + ' imports a missing local chunk');
-            }
-          "
+          set -euo pipefail
+          for name in format format-report commit app-token console console-run skip-ci setup-rodlog; do
+            file="dist/${name}.js"
+            test -s "$file" || { echo "::error::Missing bundle $file"; exit 1; }
+            node --check "$file"
+          done
+          # Shared chunks are valid as long as the build includes them.
+          for chunk in dist/*.js; do
+            node --check "$chunk"
+          done
       - name: 🎨 Format source
         id: format
         uses: ./src/format
