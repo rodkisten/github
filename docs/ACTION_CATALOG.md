@@ -15,6 +15,7 @@ Generated from public action manifests. Do not edit manually.
 - [format](#format): Detect changed or all repository files and format/lint using installed project tools
 - [node-ci](#node-ci): Execute configured Node test and build commands with grouped logs and a job summary
 - [paths-filter](#paths-filter): Match changed GitHub files against centralized repository YAML filters
+- [preview-report](#preview-report): Publish a persistent preview dashboard for the current PR revision
 - [publish](#publish): Commit changes directly or publish/update a pull request with Handlebars templates
 - [push](#push): Execute a GitHub operation with optional automatic App authentication
 - [run](#run): Execute a GitHub operation with optional automatic App authentication
@@ -416,6 +417,40 @@ Runtime: `composite`
 
 ```yaml
 - uses: rodkisten/github/src/paths-filter@main
+```
+
+See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
+
+## preview-report
+
+Publish a persistent preview dashboard for the current PR revision
+
+Runtime: `composite`
+
+### Inputs
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `app-id` | No |  | GitHub App ID for automatic authentication |
+| `private-key` | No |  | GitHub App private key for automatic authentication |
+| `github-token` | No |  | GitHub App installation token |
+| `bot-login` | No | github-actions[bot] | Comment owner login when using an existing token |
+| `pr-number` | Yes |  | Pull request number |
+| `results-file` | Yes |  | JSON preview report metadata |
+
+### Outputs
+
+| Output | Description |
+|---|---|
+| `comment-url` | URL of the persistent dashboard |
+
+### Usage template
+
+```yaml
+- uses: rodkisten/github/src/preview-report@main
+  with:
+    pr-number: "<provide pr-number>"
+    results-file: "<provide results-file>"
 ```
 
 See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
