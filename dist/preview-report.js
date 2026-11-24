@@ -13,13 +13,13 @@ const escapeText = (value) => value.replace(/[&<>]/g, (c) => ({
 	"<": "&lt;",
 	">": "&gt;"
 })[c] ?? c).replace(/[\\`*_\[\]|]/g, (c) => "\\" + c).replace(/[\r\n]/g, " ");
-const safeUrl = (v) => typeof v === "string" && /^https:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[^\s<>()\[\]\\]*)?$/.test(v);
+const safeUrl = (v) => typeof v === "string" && v.length <= 2048 && /^https:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[^\s<>()\[\]\\]*)?$/.test(v);
 const boundedText = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
 const validStatus = (v) => v === "success" || v === "failure" || v === "pending";
 function parseReport(value) {
 	if (!value || typeof value !== "object") throw new Error("Invalid preview report");
 	const r = value;
-	if (typeof r.title !== "string" || !r.title.trim() || r.title.length > 200 || typeof r.url !== "string" || !/^https:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[^\s<>()]*)?$/.test(r.url) || typeof r.sha !== "string" || !/^[a-f0-9]{40}$/.test(r.sha) || ![
+	if (typeof r.title !== "string" || !r.title.trim() || r.title.length > 200 || !safeUrl(r.url) || typeof r.sha !== "string" || !/^[a-f0-9]{40}$/.test(r.sha) || ![
 		"success",
 		"failure",
 		"pending"
@@ -27,7 +27,7 @@ function parseReport(value) {
 	if (r.banner !== void 0 && !safeUrl(r.banner)) throw new Error("Invalid banner URL");
 	if (r.description !== void 0 && !boundedText(r.description, 1e3)) throw new Error("Invalid description");
 	if (r.links !== void 0 && (!Array.isArray(r.links) || r.links.length > 10 || !r.links.every((l) => l && boundedText(l.label, 100) && safeUrl(l.url)))) throw new Error("Invalid report links");
-	if (r.sections !== void 0 && (!Array.isArray(r.sections) || r.sections.length > 10 || !r.sections.every((s) => s && boundedText(s.title, 100) && (s.collapsed === void 0 || typeof s.collapsed === "boolean") && Array.isArray(s.rows) && s.rows.length <= 20 && s.rows.every((row) => row && boundedText(row.label, 100) && boundedText(row.value, 500) && (row.status === void 0 || validStatus(row.status)))))) throw new Error("Invalid report sections");
+	if (r.sections !== void 0 && (!Array.isArray(r.sections) || r.sections.length > 10 || !r.sections.every((s) => s && boundedText(s.title, 100) && (s.collapsed === void 0 || typeof s.collapsed === "boolean") && Array.isArray(s.rows) && s.rows.length <= 20 && s.rows.every((row) => row && boundedText(row.label, 100) && boundedText(row.value, 500) && (row.url === void 0 || safeUrl(row.url)) && (row.status === void 0 || validStatus(row.status)))))) throw new Error("Invalid report sections");
 	return r;
 }
 function renderReport(r, repository, runId) {
@@ -41,15 +41,15 @@ function renderReport(r, repository, runId) {
 		failure: "❌ ",
 		pending: "⏳ "
 	};
-	const sections = (r.sections ?? []).flatMap((s) => [
+	const sections = (r.sections ?? []).map((s) => [
 		...s.collapsed ? ["<details><summary>" + escapeText(s.title) + "</summary>", ""] : ["### " + escapeText(s.title), ""],
 		"| Metric | Value |",
 		"| :-- | :-- |",
-		...s.rows.map((row) => "| " + escapeText(row.label) + " | " + (row.status ? icons[row.status] : "") + escapeText(row.value) + " |"),
+		...s.rows.map((row) => "| " + (safeUrl(row.url) ? "[" + escapeText(row.label) + "](" + row.url + ")" : escapeText(row.label)) + " | " + (row.status ? icons[row.status] : "") + escapeText(row.value) + " |"),
 		"",
 		...s.collapsed ? ["</details>", ""] : []
 	]);
-	return [
+	const header = [
 		MARKER,
 		...r.banner ? ["![Preview banner](" + r.banner + ")", ""] : [],
 		"## " + escapeText(r.title),
@@ -61,16 +61,27 @@ function renderReport(r, repository, runId) {
 		"| Revision | Workflow |",
 		"| :-- | :-- |",
 		"| [" + r.sha.slice(0, 7) + "](https://github.com/" + repository + "/commit/" + r.sha + ") | [Run](https://github.com/" + repository + "/actions/runs/" + runId + ") |",
-		"",
-		...sections,
-		...r.links?.length ? [
-			"### Resources",
-			"",
-			...r.links.map((l) => "- [" + escapeText(l.label) + "](" + l.url + ")"),
-			""
-		] : [],
-		"_Managed by Rod Preview Report. Updated in place._"
+		""
 	].join("\n");
+	const footer = [...r.links?.length ? [
+		"### Resources",
+		"",
+		...r.links.map((l) => "- [" + escapeText(l.label) + "](" + l.url + ")"),
+		""
+	] : [], "_Managed by Rod Preview Report. Updated in place._"].join("\n");
+	const limit = 6e4;
+	const notice = "\n_Additional sections omitted to fit the comment limit._\n";
+	let body = header;
+	let omitted = false;
+	for (const section of sections) {
+		const block = section.join("\n") + "\n";
+		if (Buffer.byteLength(body + block + footer + notice, "utf8") > limit) {
+			omitted = true;
+			continue;
+		}
+		body += block;
+	}
+	return body + (omitted ? notice : "") + footer;
 }
 // src/preview-report/metrics.ts
 function seconds(start, end) {
@@ -78,7 +89,7 @@ function seconds(start, end) {
 	const n = (Date.parse(end) - Date.parse(start)) / 1e3;
 	return Number.isFinite(n) && n >= 0 ? n : void 0;
 }
-function workflowSections(jobs, artifacts) {
+function workflowSections(jobs, artifacts, repository, runId) {
 	const completed = jobs.flatMap((j) => {
 		const duration = seconds(j.started_at, j.completed_at);
 		return duration === void 0 ? [] : [{
@@ -135,6 +146,7 @@ function workflowSections(jobs, artifacts) {
 			collapsed: true,
 			rows: live.slice(0, 20).map((a) => ({
 				label: a.name,
+				...repository && runId && a.id ? { url: "https://github.com/" + repository + "/actions/runs/" + runId + "/artifacts/" + a.id } : {},
 				value: (a.size_in_bytes / 1024).toFixed(2) + " KiB"
 			}))
 		}
@@ -316,7 +328,7 @@ function historicalSection(current, previous, runId) {
 	};
 }
 // src/preview-report/git.ts
-function gitSections(commits, files, totals) {
+function gitSections(commits, files, totals, repository) {
 	const directories = /* @__PURE__ */ new Map();
 	for (const file of files) {
 		const directory = file.filename.includes("/") ? file.filename.split("/")[0] : "(root)";
@@ -349,6 +361,7 @@ function gitSections(commits, files, totals) {
 			collapsed: true,
 			rows: commits.slice(-20).map((c) => ({
 				label: c.sha.slice(0, 7),
+				...repository && /^[a-f0-9]{40}$/.test(c.sha) ? { url: "https://github.com/" + repository + "/commit/" + c.sha } : {},
 				value: (c.commit.message.split("\n")[0] + " · " + (c.commit.author?.name ?? "Unknown")).slice(0, 500)
 			}))
 		},
@@ -426,7 +439,7 @@ runAction("Rod Preview Report", async () => {
 		files: pr.data.changed_files,
 		additions: pr.data.additions,
 		deletions: pr.data.deletions
-	});
+	}, owner + "/" + repo);
 	if (inputs["bundle-file"]) {
 		const current = parseSnapshot(JSON.parse(readFileSync(inputs["bundle-file"], "utf8")));
 		const baseline = inputs["baseline-file"] ? parseSnapshot(JSON.parse(readFileSync(inputs["baseline-file"], "utf8"))) : void 0;
@@ -475,8 +488,9 @@ runAction("Rod Preview Report", async () => {
 					timeout: 3e4,
 					stdio: "pipe"
 				});
-				const prior = parseSnapshot(JSON.parse(readFileSync(join(directory, basename(inputs["bundle-file"])), "utf8")));
-				sections.push(historicalSection(current, prior, reference.id));
+				const history = historicalSection(current, parseSnapshot(JSON.parse(readFileSync(join(directory, basename(inputs["bundle-file"])), "utf8"))), reference.id);
+				history.rows[0].url = "https://github.com/" + owner + "/" + repo + "/actions/runs/" + reference.id;
+				sections.push(history);
 			} catch {
 				sections.push({
 					title: "Since last successful build",
@@ -507,7 +521,7 @@ runAction("Rod Preview Report", async () => {
 			run_id,
 			per_page: 100
 		})]);
-		sections.push(...workflowSections(jobs, artifacts));
+		sections.push(...workflowSections(jobs, artifacts, owner + "/" + repo, run_id));
 	} catch {
 		sections.push({
 			title: "Workflow intelligence",
@@ -531,7 +545,8 @@ runAction("Rod Preview Report", async () => {
 			rows: [
 				{
 					label: "Previous revision",
-					value: previous.slice(0, 7)
+					value: previous.slice(0, 7),
+					url: "https://github.com/" + owner + "/" + repo + "/commit/" + previous
 				},
 				{
 					label: "Comparison",
