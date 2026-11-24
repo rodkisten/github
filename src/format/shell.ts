@@ -37,7 +37,7 @@ export function shellDialect(file: string): ShellDialect | undefined {
     if (/\bbash\b/.test(firstLine)) return 'bash';
     if (/\b(?:sh|dash|ash)\b/.test(firstLine)) return 'posix';
   } catch {
-    return undefined;
+    return ext === '.sh' ? 'posix' : undefined;
   }
 
   return ext === '.sh' ? 'posix' : undefined;

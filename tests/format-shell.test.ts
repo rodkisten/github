@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { shellDialect, shellTools } from '../src/format/shell.js';
 import type { ProcessResult } from '../src/format/process.js';
@@ -24,4 +27,13 @@ describe('shell dialect detection and validation', () => {
     const issues = await shellTools('script.sh', 'check', false, () => ({ ...ok, ok: false, missing: true }));
     expect(issues[0]?.status).toBe('skipped');
   });
+});
+
+it('honors Bash shebang in .sh files', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rod-shell-'));
+  try {
+    const file = join(dir, 'script.sh');
+    writeFileSync(file, '#!/usr/bin/env bash\n');
+    expect(shellDialect(file)).toBe('bash');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
