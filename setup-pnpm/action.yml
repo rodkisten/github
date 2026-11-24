@@ -1,0 +1,52 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/setup-pnpm/action.yml
+
+name: Setup pnpm workspace
+description: Configure pnpm and Node.js with optional cache and frozen installation
+inputs:
+  node-version:
+    description: Node.js version
+    default: "24"
+  pnpm-version:
+    description: Explicit pnpm version; omit to use packageManager in package.json
+    default: ""
+  working-directory:
+    description: Workspace root containing package.json and pnpm-lock.yaml
+    default: .
+  install:
+    description: Install dependencies using the frozen lockfile
+    default: "true"
+  cache:
+    description: Enable pnpm store cache
+    default: "true"
+  ignore-scripts:
+    description: Disable dependency lifecycle scripts during installation
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+        package_json_file: ${{ inputs.working-directory }}/package.json
+        run_install: false
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache == 'true' && 'pnpm' || '' }}
+        cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+    - name: Install frozen dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        IGNORE_SCRIPTS: ${{ inputs.ignore-scripts }}
+      run: |
+        set -euo pipefail
+        args=(--frozen-lockfile)
+        if [[ "$IGNORE_SCRIPTS" == true ]]; then
+          args+=(--ignore-scripts)
+        fi
+        pnpm install "${args[@]}"

@@ -1,0 +1,18 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/setup-rodlog/action.yml
+
+name: 🌈 Setup rodlog
+description: Install the published rodlog binary with SHA-256 verification
+inputs:
+  release-base:
+    description: Trusted HTTPS mirror with rodlog binaries and checksums
+    required: false
+    default: https://rodkisten.github.io/rodlog/releases
+outputs:
+  binary:
+    description: Absolute path to verified rodlog binary (or fallback wrapper)
+  fallback:
+    description: "'true' when transparent fallback wrapper was installed"
+runs:
+  using: node24
+  main: ../dist/setup-rodlog.js

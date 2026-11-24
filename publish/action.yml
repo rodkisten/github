@@ -1,0 +1,124 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/publish/action.yml
+
+name: 📤 Publish Git changes
+description: Commit changes directly or publish/update a pull request with
+  Handlebars templates
+inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
+  token:
+    description: GitHub token with contents:write and pull-requests:write for PR mode
+    required: false
+  mode:
+    description: commit or pull-request
+    required: true
+    default: pull-request
+  branch:
+    description: Target branch for commit mode or automation branch for PR mode
+    required: false
+  base-branch:
+    description: Base branch for pull requests (defaults to repository default branch)
+    required: false
+  commit-message:
+    description: Literal commit message (use commit-message-template for Handlebars)
+    required: false
+  commit-message-template:
+    description: Handlebars template for the commit message; takes precedence over
+      commit-message
+    required: false
+  pr-title:
+    description: Literal pull request title
+    required: false
+  pr-title-template:
+    description: Handlebars template for the pull request title
+    required: false
+  pr-body:
+    description: Literal pull request body
+    required: false
+  pr-body-template:
+    description: Handlebars template for the pull request body
+    required: false
+  template-data:
+    description: Additional JSON object merged into the template context
+    required: false
+    default: "{}"
+  labels:
+    description: Comma-separated labels to apply to the pull request
+    required: false
+  draft:
+    description: Create or keep the pull request as draft
+    required: false
+    default: "false"
+  author-name:
+    description: Git author and committer name
+    required: false
+  author-email:
+    description: Git author and committer email
+    required: false
+outputs:
+  commit-sha:
+    description: SHA of the created commit
+    value: ${{ steps.operation.outputs.commit-sha }}
+  branch:
+    description: Branch that received the commit
+    value: ${{ steps.operation.outputs.branch }}
+  pr-number:
+    description: Created or updated pull request number (empty in commit mode)
+    value: ${{ steps.operation.outputs.pr-number }}
+  pr-url:
+    description: Created or updated pull request URL (empty in commit mode)
+    value: ${{ steps.operation.outputs.pr-url }}
+  files:
+    description: Newline-separated paths included in the commit
+    value: ${{ steps.operation.outputs.files }}
+runs:
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
+      run: >
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true &&
+        "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: write
+        permission-pull-requests: ${{ inputs.mode == 'pull-request' && 'write' || '' }}
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        ROD_INPUT_MODE: ${{ inputs.mode }}
+        ROD_INPUT_BRANCH: ${{ inputs.branch }}
+        ROD_INPUT_BASE_BRANCH: ${{ inputs.base-branch }}
+        ROD_INPUT_COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        ROD_INPUT_COMMIT_MESSAGE_TEMPLATE: ${{ inputs.commit-message-template }}
+        ROD_INPUT_PR_TITLE: ${{ inputs.pr-title }}
+        ROD_INPUT_PR_TITLE_TEMPLATE: ${{ inputs.pr-title-template }}
+        ROD_INPUT_PR_BODY: ${{ inputs.pr-body }}
+        ROD_INPUT_PR_BODY_TEMPLATE: ${{ inputs.pr-body-template }}
+        ROD_INPUT_TEMPLATE_DATA: ${{ inputs.template-data }}
+        ROD_INPUT_LABELS: ${{ inputs.labels }}
+        ROD_INPUT_DRAFT: ${{ inputs.draft }}
+        ROD_INPUT_AUTHOR_NAME: ${{ inputs.author-name }}
+        ROD_INPUT_AUTHOR_EMAIL: ${{ inputs.author-email }}
+      run: node "$ROD_ACTION_PATH/../scripts/run-action.mjs" publish

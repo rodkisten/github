@@ -1,0 +1,79 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/preview-report/action.yml
+
+name: Rod Preview Report
+description: Publish a persistent preview dashboard for the current PR revision
+inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
+  github-token:
+    required: false
+    description: GitHub App installation token
+  bot-login:
+    description: Comment owner login when using an existing token
+    default: github-actions[bot]
+  pr-number:
+    required: true
+    description: Pull request number
+  bundle-file:
+    description: Optional measured bundle snapshot JSON
+    required: false
+  baseline-file:
+    description: Optional baseline snapshot JSON measured with identical settings
+    required: false
+  history-artifact:
+    description: Optional artifact name containing the previous successful PR
+      snapshot with the same JSON filename
+    required: false
+  results-file:
+    required: true
+    description: JSON preview report metadata
+outputs:
+  comment-url:
+    description: URL of the persistent dashboard
+    value: ${{ steps.operation.outputs.comment-url }}
+runs:
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.github-token != '' }}
+      run: >
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true &&
+        "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-actions: read
+        permission-contents: read
+        permission-pull-requests: write
+        permission-issues: write
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_GITHUB_TOKEN: ${{ steps.auth.outputs.token || inputs.github-token }}
+        ROD_INPUT_BOT_LOGIN: ${{ steps.auth.outputs.app-slug != '' && format('{0}[bot]',
+          steps.auth.outputs.app-slug) || inputs.bot-login }}
+        ROD_INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        ROD_INPUT_BUNDLE_FILE: ${{ inputs.bundle-file }}
+        ROD_INPUT_BASELINE_FILE: ${{ inputs.baseline-file }}
+        ROD_INPUT_HISTORY_ARTIFACT: ${{ inputs.history-artifact }}
+        ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
+      run: node "$ROD_ACTION_PATH/../scripts/run-action.mjs" preview-report

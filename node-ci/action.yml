@@ -1,0 +1,35 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/node-ci/action.yml
+
+name: 🟦 TypeScript Node CI runner
+description: Execute configured Node test and build commands with grouped logs
+  and a job summary
+inputs:
+  working-directory:
+    description: Project directory
+    default: .
+  scope:
+    description: Matched centralized path-filter name exposed as ROD_CI_FILTER
+    required: false
+    default: ""
+  test-command:
+    description: Test command
+    default: npm test
+  build-command:
+    description: Build command
+    default: npm run build
+  run-tests:
+    description: Execute test command
+    default: "true"
+  run-build:
+    description: Execute build command
+    default: "true"
+  lint-command:
+    description: Lint command
+    default: npm run lint
+  run-lint:
+    description: Execute lint command
+    default: "false"
+runs:
+  using: node24
+  main: ../dist/node-ci.js

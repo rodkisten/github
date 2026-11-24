@@ -1,0 +1,57 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/push/action.yml
+
+name: Push Git changes
+description: Execute a GitHub operation with optional automatic App authentication
+inputs:
+  app-id:
+    description: GitHub App ID
+    required: false
+  private-key:
+    description: GitHub App private key
+    required: false
+  token:
+    description: Existing GitHub token
+    required: false
+  branch:
+    description: Target branch
+    required: true
+  working-directory:
+    description: Local checkout directory
+    default: .
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HAS_ID: ${{ inputs.app-id != '' }}
+        HAS_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
+      run: >
+        if [[ "$HAS_ID" != "$HAS_KEY" || ( "$HAS_ID" != true && "$HAS_TOKEN" !=
+        true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: write
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        TARGET_BRANCH: ${{ inputs.branch }}
+        WORK_DIR: ${{ inputs.working-directory }}
+        TARGET_REPO: ${{ github.repository }}
+        SERVER_URL: ${{ github.server_url }}
+      run: >
+        set -euo pipefail
+
+        git check-ref-format --branch "$TARGET_BRANCH" >/dev/null
+
+        git -C "$WORK_DIR" -c credential.helper= -c 'credential.helper=!gh auth
+        git-credential' -c http.extraheader= -c "http.$SERVER_URL/.extraheader="
+        push "$SERVER_URL/$TARGET_REPO.git" "HEAD:refs/heads/$TARGET_BRANCH"

@@ -1,0 +1,26 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/skip-ci/action.yml
+
+name: ⏭️ Skip CI decision
+description: Decide whether expensive CI jobs should be skipped while leaving a
+  successful gate
+inputs:
+  commit-message:
+    description: Commit message (caller supplies event-appropriate message)
+    required: true
+  actor:
+    description: GitHub actor
+    required: false
+    default: ${{ github.actor }}
+  skip-bots:
+    description: Whether bot-authored commits may skip CI
+    required: false
+    default: "false"
+outputs:
+  skip:
+    description: true when expensive jobs should be skipped
+  reason:
+    description: Human-readable decision
+runs:
+  using: node24
+  main: ../dist/skip-ci.js

@@ -3,12 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && npm run actions:generate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "release": "semantic-release",
     "prebuild": "node scripts/check-source-layout.mjs",
-    "docs:actions": "node scripts/generate-action-docs.mjs"
+    "docs:actions": "node scripts/generate-action-docs.mjs",
+    "actions:generate": "node scripts/generate-public-actions.mjs",
+    "actions:check": "node scripts/generate-public-actions.mjs --check"
   },
   "dependencies": {
     "@actions/core": "^2.0.0",

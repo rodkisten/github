@@ -1,0 +1,24 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/console-run/action.yml
+
+name: 🧩 Rod Console Runner
+description: Instrument a shell command with duration, exit code and GitHub step summary
+inputs:
+  command:
+    description: Shell command to execute
+    required: true
+  shell:
+    description: Executable shell path
+    required: false
+    default: /bin/bash
+  title:
+    description: Human readable command title
+    required: false
+outputs:
+  exit-code:
+    description: Command exit code
+  duration-ms:
+    description: Execution duration in milliseconds
+runs:
+  using: node24
+  main: ../dist/console-run.js

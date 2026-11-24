@@ -1,0 +1,66 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/format-report/action.yml
+
+name: 📋 Rod Format PR Report
+description: Create or update a single formatted PR summary comment
+inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
+  github-token:
+    required: false
+    description: GitHub App installation token
+  pr-number:
+    required: true
+    description: Pull request number
+  results-file:
+    required: true
+    description: JSON results from format action
+  mode:
+    default: check
+  scope:
+    default: changed
+outputs:
+  comment-updated:
+    description: Whether the PR report comment was created or updated
+    value: ${{ steps.operation.outputs.comment-updated }}
+runs:
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.github-token != '' }}
+      run: >
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true &&
+        "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: read
+        permission-pull-requests: write
+        permission-issues: write
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_GITHUB_TOKEN: ${{ steps.auth.outputs.token || inputs.github-token }}
+        ROD_INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
+        ROD_INPUT_MODE: ${{ inputs.mode }}
+        ROD_INPUT_SCOPE: ${{ inputs.scope }}
+      run: node "$ROD_ACTION_PATH/../scripts/run-action.mjs" format-report

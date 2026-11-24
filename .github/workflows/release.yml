@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           # Commit all generated JS and chunks, not only action entrypoints.
-          git add -f -A dist/ docs/ACTION_CATALOG.md
+          git add -f -A dist/ docs/ACTION_CATALOG.md ':(glob)*/action.yml'
           if ! git diff --cached --quiet; then
             git commit -m "build(actions): publish bundles and action catalog [skip ci]"
             git push origin HEAD:main

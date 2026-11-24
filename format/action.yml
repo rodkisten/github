@@ -1,0 +1,35 @@
+# Generated public action. DO NOT EDIT.
+# Source: src/format/action.yml
+
+name: 🎨 Rod Universal Format
+description: Detect changed or all repository files and format/lint using
+  installed project tools
+inputs:
+  mode:
+    description: check or fix
+    default: check
+  scope:
+    description: changed or all
+    default: changed
+  base:
+    description: Git base ref for changed scope
+    default: origin/main
+  commit-files-path:
+    description: Write JSON commit payload to this local file instead of an Actions output
+    required: false
+  results-file:
+    description: Write JSON report to this local path
+    required: false
+  lint:
+    description: Run ESLint for JS/TS if available
+    default: "true"
+outputs:
+  changed-files:
+    description: JSON array of modified paths
+  result-json:
+    description: JSON tool results
+  suggested-commit:
+    description: Suggested conventional commit message
+runs:
+  using: node24
+  main: ../dist/format.js
