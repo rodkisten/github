@@ -42,7 +42,7 @@ export default defineConfig({
   ],
 
   onSuccess() {
-    for (const name of Object.keys(entries)) {
+    for (const name of readdirSync('src', { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)) {
       const srcYml = join('src', name, 'action.yml');
       if (!existsSync(srcYml)) continue;
 

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import YAML from 'yaml';
 
 for (const path of globSync('.github/workflows/*.yml')) YAML.parse(readFileSync(path, 'utf8'));
-for (const path of globSync('src/**/action.yml')) {
+for (const path of [...globSync('src/**/action.yml'), ...globSync('dist/**/action.yml')]) {
   const action = YAML.parse(readFileSync(path, 'utf8'));
   for (const [key, input] of Object.entries(action.inputs ?? {})) {
     if ('value' in input) throw new Error(path + ': unexpected input value: ' + key);

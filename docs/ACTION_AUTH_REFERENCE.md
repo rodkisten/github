@@ -564,3 +564,7 @@ All examples assume the App is installed on the target repository. Replace crede
 ```
 
 Push authentication is scoped to the command and clears the checkout HTTP authorization header. It does not change the commit author. Use the commit action for Git Database API commits instead. For multiple operations in a job, mint one token with app-token and pass it explicitly to each operation, granting only the required permissions. Never pass App secrets into untrusted pull request code.
+
+## Distribution layout
+
+Public manifests are generated under both `src/<action>/action.yml` (source contract) and `dist/<action>/action.yml` (build copy). The build copies all public manifests, including composite-only actions. Both layouts resolve the shared launcher from the repository root and use the bundle from the same installed revision. Prefer the `src` path for existing consumers. Authentication still delegates to the shared app-token action on main until its versioning is resolved.
