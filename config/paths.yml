@@ -93,44 +93,26 @@ repositories:
 
   shell:
     filters:
-      app:
+      validation:
         paths:
           - 'src/**'
-          - '!src/wasm/**'
+          - 'worker/**'
+          - 'wasm/**'
+          - 'tools/**'
+          - 'scripts/**'
+          - 'public/**'
+          - 'assets/**'
+          - 'index.html'
           - 'package.json'
           - 'package-lock.json'
           - 'tsconfig*.json'
           - 'vite.config.*'
-        commands:
-          test: false
-          build: 'npm run build'
-          lint: 'npm run lint'
-      wasm:
-        paths:
-          - 'wasm/**'
-          - 'src/wasm/**'
-          - 'scripts/wasm/**'
-          - 'tools/shell-flow/**'
-          - 'scripts/build-shell-flow-wasm.sh'
-          - 'scripts/test-shell-flow-wasm.mjs'
-        commands:
-          test: false
-          build: 'npm run build'
-          lint: false
-      assets:
-        paths:
-          - 'public/**'
-          - 'assets/**'
-        commands:
-          test: false
-          build: 'npm run build'
-          lint: false
-      ci:
-        paths:
+          - 'wrangler.jsonc'
+          - 'eslint.config.*'
           - '.github/workflows/**'
           - '.github/actions/**'
         commands:
-          test: false
+          test: 'npm run test:explorer'
           build: 'npm run build'
           lint: 'npm run lint'
 
