@@ -5,6 +5,8 @@ import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger } from '../utils/logger.js';
 import { MARKER, parseReport, renderReport } from './render.js';
 
+import { gitSections, previousVerifiedSha } from './git.js';
+
 runAction('Rod Preview Report', async () => {
   const { owner, repo } = github.context.repo;
   const inputs = getInputs({
@@ -28,7 +30,36 @@ runAction('Rod Preview Report', async () => {
   const login = inputs['bot-login'];
   const comments = await api.paginate(api.rest.issues.listComments, { owner, repo, issue_number: pull_number, per_page: 100 });
   const existing = comments.find(c => c.body?.startsWith(MARKER) && c.user?.login === login);
-  const body = renderReport(report, owner + '/' + repo, github.context.runId);
+  const params = { owner, repo, pull_number, per_page: 100 };
+  const [commits, files] = await Promise.all([
+    api.paginate(api.rest.pulls.listCommits, params),
+    api.paginate(api.rest.pulls.listFiles, params),
+  ]);
+  const sections = gitSections(commits, files, {
+    commits: pr.data.commits, files: pr.data.changed_files,
+    additions: pr.data.additions, deletions: pr.data.deletions,
+  });
+  const previous = previousVerifiedSha(existing?.body ?? undefined);
+  if (previous && previous !== report.sha) {
+    try {
+      const comparison = await api.rest.repos.compareCommits({ owner, repo, base: previous, head: report.sha, per_page: 1 });
+      sections.push({ title: 'Since last verified preview', rows: [
+        { label: 'Previous revision', value: previous.slice(0, 7) },
+        { label: 'Comparison', value: comparison.data.status },
+        { label: 'Ahead / behind', value: comparison.data.ahead_by + ' / ' + comparison.data.behind_by },
+      ] });
+    } catch {
+      sections.push({ title: 'Since last verified preview', rows: [{ label: 'Comparison', value: 'Unavailable' }] });
+    }
+  }
+  const latest = await api.rest.pulls.get({ owner, repo, pull_number });
+  if (latest.data.state !== 'open' || latest.data.head.sha !== report.sha || latest.data.base.sha !== pr.data.base.sha) {
+    logger.info('Skipping report because PR changed during collection');
+    return;
+  }
+  const verified = report.status === 'success' ? report.sha : previous;
+  const body = renderReport({ ...report, sections: [...(report.sections ?? []), ...sections] }, owner + '/' + repo, github.context.runId)
+    + (verified ? '\n<!-- rod-preview-verified-sha:' + verified + ' -->' : '');
   const result = existing
     ? await api.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
     : await api.rest.issues.createComment({ owner, repo, issue_number: pull_number, body });
