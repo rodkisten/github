@@ -90,7 +90,10 @@ jobs:
       - name: 📋 Verify action contracts and bundles
         run: node scripts/validate-actions.mjs
 
-      - name: 📦 Publish compiled action bundles to main
+      - name: 📚 Generate action catalog
+        run: npm run docs:actions
+
+      - name: 📦 Publish compiled bundles and action catalog to main
         shell: bash
         env:
           GIT_AUTHOR_NAME: ${{ steps.app-token.outputs.app-slug }}[bot]
@@ -100,9 +103,9 @@ jobs:
         run: |
           set -euo pipefail
           # Commit all generated JS and chunks, not only action entrypoints.
-          git add -f -A dist/
+          git add -f -A dist/ docs/ACTION_CATALOG.md
           if ! git diff --cached --quiet; then
-            git commit -m "build(actions): publish executable bundles [skip ci]"
+            git commit -m "build(actions): publish bundles and action catalog [skip ci]"
             git push origin HEAD:main
           fi
 
