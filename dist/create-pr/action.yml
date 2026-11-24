@@ -75,16 +75,21 @@ runs:
         private-key: ${{ inputs.private-key }}
         permission-contents: read
         permission-pull-requests: write
-    - id: operation
-      uses: rodkisten/github/src/create-pr/internal@main
+    - uses: actions/setup-node@v4
       with:
-        token: ${{ steps.auth.outputs.token || inputs.token }}
-        head: ${{ inputs.head }}
-        base: ${{ inputs.base }}
-        title: ${{ inputs.title }}
-        body: ${{ inputs.body }}
-        conversation-url: ${{ inputs.conversation-url }}
-        labels: ${{ inputs.labels }}
-        reviewers: ${{ inputs.reviewers }}
-        draft: ${{ inputs.draft }}
-        update-existing: ${{ inputs.update-existing }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        ROD_INPUT_HEAD: ${{ inputs.head }}
+        ROD_INPUT_BASE: ${{ inputs.base }}
+        ROD_INPUT_TITLE: ${{ inputs.title }}
+        ROD_INPUT_BODY: ${{ inputs.body }}
+        ROD_INPUT_CONVERSATION_URL: ${{ inputs.conversation-url }}
+        ROD_INPUT_LABELS: ${{ inputs.labels }}
+        ROD_INPUT_REVIEWERS: ${{ inputs.reviewers }}
+        ROD_INPUT_DRAFT: ${{ inputs.draft }}
+        ROD_INPUT_UPDATE_EXISTING: ${{ inputs.update-existing }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" create-pr

@@ -87,19 +87,24 @@ runs:
         private-key: ${{ inputs.private-key }}
         permission-contents: read
         permission-pull-requests: read
-    - id: operation
-      uses: rodkisten/github/src/paths-filter/internal@main
+    - uses: actions/setup-node@v4
       with:
-        token: ${{ steps.auth.outputs.token || inputs.token }}
-        config-repository: ${{ inputs.config-repository }}
-        config-ref: ${{ inputs.config-ref }}
-        config-path: ${{ inputs.config-path }}
-        base: ${{ inputs.base }}
-        repository-key: ${{ inputs.repository-key }}
-        working-directory: ${{ inputs.working-directory }}
-        test-command: ${{ inputs.test-command }}
-        build-command: ${{ inputs.build-command }}
-        lint-command: ${{ inputs.lint-command }}
-        run-tests: ${{ inputs.run-tests }}
-        run-build: ${{ inputs.run-build }}
-        run-lint: ${{ inputs.run-lint }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        ROD_INPUT_CONFIG_REPOSITORY: ${{ inputs.config-repository }}
+        ROD_INPUT_CONFIG_REF: ${{ inputs.config-ref }}
+        ROD_INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        ROD_INPUT_BASE: ${{ inputs.base }}
+        ROD_INPUT_REPOSITORY_KEY: ${{ inputs.repository-key }}
+        ROD_INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        ROD_INPUT_TEST_COMMAND: ${{ inputs.test-command }}
+        ROD_INPUT_BUILD_COMMAND: ${{ inputs.build-command }}
+        ROD_INPUT_LINT_COMMAND: ${{ inputs.lint-command }}
+        ROD_INPUT_RUN_TESTS: ${{ inputs.run-tests }}
+        ROD_INPUT_RUN_BUILD: ${{ inputs.run-build }}
+        ROD_INPUT_RUN_LINT: ${{ inputs.run-lint }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" paths-filter

@@ -64,14 +64,19 @@ runs:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
         permission-contents: write
-    - id: operation
-      uses: rodkisten/github/src/commit/internal@main
+    - uses: actions/setup-node@v4
       with:
-        token: ${{ steps.auth.outputs.token || inputs.token }}
-        branch: ${{ inputs.branch }}
-        base: ${{ inputs.base }}
-        message: ${{ inputs.message }}
-        files: ${{ inputs.files }}
-        files-path: ${{ inputs.files-path }}
-        author-name: ${{ inputs.author-name }}
-        author-email: ${{ inputs.author-email }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        ROD_INPUT_BRANCH: ${{ inputs.branch }}
+        ROD_INPUT_BASE: ${{ inputs.base }}
+        ROD_INPUT_MESSAGE: ${{ inputs.message }}
+        ROD_INPUT_FILES: ${{ inputs.files }}
+        ROD_INPUT_FILES_PATH: ${{ inputs.files-path }}
+        ROD_INPUT_AUTHOR_NAME: ${{ inputs.author-name }}
+        ROD_INPUT_AUTHOR_EMAIL: ${{ inputs.author-email }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" commit
