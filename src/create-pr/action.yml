@@ -1,9 +1,15 @@
 name: 🤖 Create or update pull request
 description: Create or update a PR using a scoped GitHub App installation token
 inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
   token:
     description: GitHub App installation token with pull-requests write permission
-    required: true
+    required: false
   head:
     description: Head branch (owner:branch for cross-repository PRs)
     required: true
@@ -37,12 +43,47 @@ inputs:
 outputs:
   number:
     description: Pull request number
+    value: ${{ steps.operation.outputs.number }}
   url:
     description: Pull request URL
+    value: ${{ steps.operation.outputs.url }}
   created:
     description: Whether a new PR was created
+    value: ${{ steps.operation.outputs.created }}
   updated:
     description: Whether an existing PR was updated
+    value: ${{ steps.operation.outputs.updated }}
 runs:
-  using: node24
-  main: ../../dist/create-pr.js
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" ]]; then
+          echo "::error::Provide both app-id and private-key"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: read
+        permission-pull-requests: write
+    - id: operation
+      uses: rodkisten/github/src/create-pr/internal@main
+      with:
+        token: ${{ steps.auth.outputs.token || inputs.token }}
+        head: ${{ inputs.head }}
+        base: ${{ inputs.base }}
+        title: ${{ inputs.title }}
+        body: ${{ inputs.body }}
+        conversation-url: ${{ inputs.conversation-url }}
+        labels: ${{ inputs.labels }}
+        reviewers: ${{ inputs.reviewers }}
+        draft: ${{ inputs.draft }}
+        update-existing: ${{ inputs.update-existing }}

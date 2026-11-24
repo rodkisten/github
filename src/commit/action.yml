@@ -1,11 +1,18 @@
 name: 📝 Create commit
 description: Atomically commit multiple files through the Git Database API using a GitHub App token
 inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
   token:
     description: GitHub App installation token with contents write permission
-    required: true
+    required: false
   branch:
     description: Target branch to create or update
+    value: ${{ steps.operation.outputs.branch }}
     required: true
   base:
     description: Base branch for creating a new target branch
@@ -15,6 +22,7 @@ inputs:
     required: true
   files:
     description: JSON array of {path, content, encoding?} file changes
+    value: ${{ steps.operation.outputs.files }}
     required: false
   files-path:
     description: Path to JSON array of file changes; preferred for large repositories
@@ -30,10 +38,39 @@ inputs:
 outputs:
   sha:
     description: Created commit SHA
+    value: ${{ steps.operation.outputs.sha }}
   branch:
     description: Updated branch
   files:
     description: Number of files included
 runs:
-  using: node24
-  main: ../../dist/commit.js
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" ]]; then
+          echo "::error::Provide both app-id and private-key"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: write
+    - id: operation
+      uses: rodkisten/github/src/commit/internal@main
+      with:
+        token: ${{ steps.auth.outputs.token || inputs.token }}
+        branch: ${{ inputs.branch }}
+        base: ${{ inputs.base }}
+        message: ${{ inputs.message }}
+        files: ${{ inputs.files }}
+        files-path: ${{ inputs.files-path }}
+        author-name: ${{ inputs.author-name }}
+        author-email: ${{ inputs.author-email }}
