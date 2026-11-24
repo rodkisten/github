@@ -10,6 +10,9 @@ const escapeText = (value) => value.replace(/[&<>]/g, (c) => ({
 	"<": "&lt;",
 	">": "&gt;"
 })[c] ?? c).replace(/[\\`*_\[\]|]/g, (c) => "\\" + c).replace(/[\r\n]/g, " ");
+const safeUrl = (v) => typeof v === "string" && /^https:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[^\s<>()\[\]\\]*)?$/.test(v);
+const boundedText = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max;
+const validStatus = (v) => v === "success" || v === "failure" || v === "pending";
 function parseReport(value) {
 	if (!value || typeof value !== "object") throw new Error("Invalid preview report");
 	const r = value;
@@ -18,6 +21,10 @@ function parseReport(value) {
 		"failure",
 		"pending"
 	].includes(String(r.status))) throw new Error("Invalid preview report fields");
+	if (r.banner !== void 0 && !safeUrl(r.banner)) throw new Error("Invalid banner URL");
+	if (r.description !== void 0 && !boundedText(r.description, 1e3)) throw new Error("Invalid description");
+	if (r.links !== void 0 && (!Array.isArray(r.links) || r.links.length > 10 || !r.links.every((l) => l && boundedText(l.label, 100) && safeUrl(l.url)))) throw new Error("Invalid report links");
+	if (r.sections !== void 0 && (!Array.isArray(r.sections) || r.sections.length > 10 || !r.sections.every((s) => s && boundedText(s.title, 100) && (s.collapsed === void 0 || typeof s.collapsed === "boolean") && Array.isArray(s.rows) && s.rows.length <= 20 && s.rows.every((row) => row && boundedText(row.label, 100) && boundedText(row.value, 500) && (row.status === void 0 || validStatus(row.status)))))) throw new Error("Invalid report sections");
 	return r;
 }
 function renderReport(r, repository, runId) {
@@ -26,10 +33,25 @@ function renderReport(r, repository, runId) {
 		failure: "❌ Failed",
 		pending: "⏳ Pending"
 	}[r.status];
+	const icons = {
+		success: "✅ ",
+		failure: "❌ ",
+		pending: "⏳ "
+	};
+	const sections = (r.sections ?? []).flatMap((s) => [
+		...s.collapsed ? ["<details><summary>" + escapeText(s.title) + "</summary>", ""] : ["### " + escapeText(s.title), ""],
+		"| Metric | Value |",
+		"| :-- | :-- |",
+		...s.rows.map((row) => "| " + escapeText(row.label) + " | " + (row.status ? icons[row.status] : "") + escapeText(row.value) + " |"),
+		"",
+		...s.collapsed ? ["</details>", ""] : []
+	]);
 	return [
 		MARKER,
+		...r.banner ? ["![Preview banner](" + r.banner + ")", ""] : [],
 		"## " + escapeText(r.title),
 		"",
+		...r.description ? [escapeText(r.description), ""] : [],
 		"**Status:** " + status,
 		"",
 		...r.status === "success" ? ["[Open preview](" + r.url + ")", ""] : [],
@@ -37,6 +59,13 @@ function renderReport(r, repository, runId) {
 		"| :-- | :-- |",
 		"| [" + r.sha.slice(0, 7) + "](https://github.com/" + repository + "/commit/" + r.sha + ") | [Run](https://github.com/" + repository + "/actions/runs/" + runId + ") |",
 		"",
+		...sections,
+		...r.links?.length ? [
+			"### Resources",
+			"",
+			...r.links.map((l) => "- [" + escapeText(l.label) + "](" + l.url + ")"),
+			""
+		] : [],
 		"_Managed by Rod Preview Report. Updated in place._"
 	].join("\n");
 }
