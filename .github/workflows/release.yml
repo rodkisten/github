@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: shared-actions-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: 🔐 Validate GitHub App credentials
         env:
-          BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+          BOT_APP_ID: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
           BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
         shell: bash
         run: |
@@ -87,38 +87,8 @@ jobs:
       - name: 🏗️ Build all bundles
         run: npm run build
 
-      - name: 📋 Verify bundles
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          bundles=(
-            app-token
-            ci-summary
-            commit
-            console
-            console-run
-            create-pr
-            format
-            format-report
-            node-ci
-            paths-filter
-            publish
-            setup-rodlog
-            skip-ci
-          )
-
-          for bundle in "${bundles[@]}"; do
-            file="dist/${bundle}.js"
-
-            if [[ ! -s "$file" ]]; then
-              echo "::error::Missing bundle: $file"
-              exit 1
-            fi
-
-            node --check "$file"
-            echo "✅ $file"
-          done
+      - name: 📋 Verify action contracts and bundles
+        run: node scripts/validate-actions.mjs
 
       - name: 📦 Publish compiled action bundles to main
         shell: bash
