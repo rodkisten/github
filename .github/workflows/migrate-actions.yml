@@ -9,7 +9,7 @@ on:
       target_branch:
         description: Branch to migrate
         required: true
-        default: feat/preview-report-integration
+        default: main
         type: string
       dry_run:
         description: Validate without committing
@@ -37,7 +37,7 @@ jobs:
           app-id: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-contents: write
-          permission-workflows: true
+          permission-workflows: write
 
       - name: "📥 Checkout target branch"
         uses: actions/checkout@v4
