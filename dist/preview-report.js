@@ -146,7 +146,7 @@ function parseSnapshot(value) {
 		"raw",
 		"gzip",
 		"brotli"
-	].every((k) => Number.isSafeInteger(size[k]) && size[k] >= 0)) throw new Error("Invalid bundle size: " + name);
+	].every((k) => Number.isSafeInteger(size[k]) && size[k] >= 0) || size.sha256 !== void 0 && (typeof size.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(size.sha256))) throw new Error("Invalid bundle size: " + name);
 	return Object.fromEntries(entries);
 }
 const total = (snapshot) => Object.values(snapshot).reduce((a, b) => ({
@@ -189,6 +189,18 @@ function matchBundles(current, baseline) {
 	}
 	return matches;
 }
+function duplicateGroups(snapshot) {
+	const groups = /* @__PURE__ */ new Map();
+	for (const [name, size] of Object.entries(snapshot)) {
+		if (!size.sha256) continue;
+		const key = size.sha256 + ":" + size.raw;
+		groups.set(key, [...groups.get(key) ?? [], name]);
+	}
+	return [...groups.values()].filter((names) => names.length > 1).map((names) => ({
+		names: names.sort(),
+		bytes: snapshot[names[0]].raw * (names.length - 1)
+	})).sort((a, b) => b.bytes - a.bytes);
+}
 function bundleSections(current, baseline) {
 	const now = total(current);
 	const before = baseline ? total(baseline) : void 0;
@@ -205,6 +217,8 @@ function bundleSections(current, baseline) {
 		name,
 		change: size.raw - (baseline[matches.get(name) ?? ""]?.raw ?? 0)
 	})).filter((x) => x.change > 0).sort((a, b) => b.change - a.change) : [];
+	const duplicates = duplicateGroups(current);
+	const coverage = Object.values(current).filter((size) => size.sha256).length;
 	return [
 		{
 			title: "Bundle totals",
@@ -246,6 +260,31 @@ function bundleSections(current, baseline) {
 				};
 			})
 		},
+		{
+			title: "Content intelligence",
+			rows: [
+				{
+					label: "Fingerprint coverage",
+					value: coverage + " / " + Object.keys(current).length
+				},
+				{
+					label: "Identical content groups",
+					value: coverage ? String(duplicates.length) : "Not measured"
+				},
+				{
+					label: "Potential duplicate raw bytes",
+					value: coverage ? kib(duplicates.reduce((sum, g) => sum + g.bytes, 0)) : "Not measured"
+				}
+			]
+		},
+		...duplicates.length ? [{
+			title: "Identical files (review before removing)",
+			collapsed: true,
+			rows: duplicates.slice(0, 10).map((g) => ({
+				label: g.names[0],
+				value: kib(g.bytes) + " potential savings · " + g.names.slice(1, 5).join(", ") + (g.names.length > 5 ? " · additional copies omitted" : "")
+			}))
+		}] : [],
 		...baseline ? [{
 			title: "Largest raw increases",
 			collapsed: true,
