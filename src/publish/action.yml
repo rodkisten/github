@@ -93,21 +93,26 @@ runs:
         private-key: ${{ inputs.private-key }}
         permission-contents: write
         permission-pull-requests: ${{ inputs.mode == 'pull-request' && 'write' || '' }}
-    - id: operation
-      uses: rodkisten/github/src/publish/internal@main
+    - uses: actions/setup-node@v4
       with:
-        token: ${{ steps.auth.outputs.token || inputs.token }}
-        mode: ${{ inputs.mode }}
-        branch: ${{ inputs.branch }}
-        base-branch: ${{ inputs.base-branch }}
-        commit-message: ${{ inputs.commit-message }}
-        commit-message-template: ${{ inputs.commit-message-template }}
-        pr-title: ${{ inputs.pr-title }}
-        pr-title-template: ${{ inputs.pr-title-template }}
-        pr-body: ${{ inputs.pr-body }}
-        pr-body-template: ${{ inputs.pr-body-template }}
-        template-data: ${{ inputs.template-data }}
-        labels: ${{ inputs.labels }}
-        draft: ${{ inputs.draft }}
-        author-name: ${{ inputs.author-name }}
-        author-email: ${{ inputs.author-email }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+        ROD_INPUT_MODE: ${{ inputs.mode }}
+        ROD_INPUT_BRANCH: ${{ inputs.branch }}
+        ROD_INPUT_BASE_BRANCH: ${{ inputs.base-branch }}
+        ROD_INPUT_COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        ROD_INPUT_COMMIT_MESSAGE_TEMPLATE: ${{ inputs.commit-message-template }}
+        ROD_INPUT_PR_TITLE: ${{ inputs.pr-title }}
+        ROD_INPUT_PR_TITLE_TEMPLATE: ${{ inputs.pr-title-template }}
+        ROD_INPUT_PR_BODY: ${{ inputs.pr-body }}
+        ROD_INPUT_PR_BODY_TEMPLATE: ${{ inputs.pr-body-template }}
+        ROD_INPUT_TEMPLATE_DATA: ${{ inputs.template-data }}
+        ROD_INPUT_LABELS: ${{ inputs.labels }}
+        ROD_INPUT_DRAFT: ${{ inputs.draft }}
+        ROD_INPUT_AUTHOR_NAME: ${{ inputs.author-name }}
+        ROD_INPUT_AUTHOR_EMAIL: ${{ inputs.author-email }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" publish

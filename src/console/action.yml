@@ -82,17 +82,22 @@ runs:
         private-key: ${{ inputs.private-key }}
         permission-contents: read
         permission-actions: read
-    - id: operation
-      uses: rodkisten/github/src/console/internal@main
+    - uses: actions/setup-node@v4
       with:
-        defaults: ${{ inputs.defaults }}
-        config: ${{ inputs.config }}
-        format-mode: ${{ inputs.format-mode }}
-        format-scope: ${{ inputs.format-scope }}
-        format-base: ${{ inputs.format-base }}
-        format-lint: ${{ inputs.format-lint }}
-        commit-files-path: ${{ inputs.commit-files-path }}
-        results-file: ${{ inputs.results-file }}
-        report: ${{ inputs.report }}
-        github-token: ${{ steps.auth.outputs.token || inputs.github-token }}
-        events-file: ${{ inputs.events-file }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_DEFAULTS: ${{ inputs.defaults }}
+        ROD_INPUT_CONFIG: ${{ inputs.config }}
+        ROD_INPUT_FORMAT_MODE: ${{ inputs.format-mode }}
+        ROD_INPUT_FORMAT_SCOPE: ${{ inputs.format-scope }}
+        ROD_INPUT_FORMAT_BASE: ${{ inputs.format-base }}
+        ROD_INPUT_FORMAT_LINT: ${{ inputs.format-lint }}
+        ROD_INPUT_COMMIT_FILES_PATH: ${{ inputs.commit-files-path }}
+        ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
+        ROD_INPUT_REPORT: ${{ inputs.report }}
+        ROD_INPUT_GITHUB_TOKEN: ${{ steps.auth.outputs.token || inputs.github-token }}
+        ROD_INPUT_EVENTS_FILE: ${{ inputs.events-file }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" console

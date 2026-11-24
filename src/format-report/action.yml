@@ -47,11 +47,16 @@ runs:
         permission-contents: read
         permission-pull-requests: write
         permission-issues: write
-    - id: operation
-      uses: rodkisten/github/src/format-report/internal@main
+    - uses: actions/setup-node@v4
       with:
-        github-token: ${{ steps.auth.outputs.token || inputs.github-token }}
-        pr-number: ${{ inputs.pr-number }}
-        results-file: ${{ inputs.results-file }}
-        mode: ${{ inputs.mode }}
-        scope: ${{ inputs.scope }}
+        node-version: '24'
+    - id: operation
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_INPUT_GITHUB_TOKEN: ${{ steps.auth.outputs.token || inputs.github-token }}
+        ROD_INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
+        ROD_INPUT_MODE: ${{ inputs.mode }}
+        ROD_INPUT_SCOPE: ${{ inputs.scope }}
+      run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" format-report
