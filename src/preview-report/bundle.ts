@@ -100,3 +100,8 @@ export function bundleSections(current: BundleSnapshot, baseline?: BundleSnapsho
     ...(baseline ? [{title:'Largest raw increases',collapsed:true,rows:changes.slice(0,10).map(x=>({label:x.name,value:'+'+kib(x.change)}))}] : []),
   ];
 }
+
+export function historicalSection(current: BundleSnapshot, previous: BundleSnapshot, runId: number): ReportSection {
+  const now=total(current), before=total(previous);
+  return {title:'Since last successful build',rows:[{label:'Reference run',value:String(runId)},...(['raw','gzip','brotli'] as const).map(k=>({label:k,value:kib(now[k])+' · Δ '+delta(now[k],before[k])}))]};
+}

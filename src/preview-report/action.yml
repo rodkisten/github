@@ -22,6 +22,9 @@ inputs:
   baseline-file:
     description: Optional baseline snapshot JSON measured with identical settings
     required: false
+  history-artifact:
+    description: Optional artifact name containing the previous successful PR snapshot with the same JSON filename
+    required: false
   results-file:
     required: true
     description: JSON preview report metadata
@@ -65,5 +68,6 @@ runs:
         ROD_INPUT_PR_NUMBER: ${{ inputs.pr-number }}
         ROD_INPUT_BUNDLE_FILE: ${{ inputs.bundle-file }}
         ROD_INPUT_BASELINE_FILE: ${{ inputs.baseline-file }}
+        ROD_INPUT_HISTORY_ARTIFACT: ${{ inputs.history-artifact }}
         ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
       run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" preview-report

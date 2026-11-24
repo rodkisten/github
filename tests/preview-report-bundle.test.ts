@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { measure,parseSnapshot,bundleSections,matchBundles,duplicateGroups } from '../src/preview-report/bundle.js';
+import { measure,parseSnapshot,bundleSections,matchBundles,duplicateGroups,historicalSection } from '../src/preview-report/bundle.js';
 describe('bundle metrics',()=>{
   it('measures actual bytes and compression',()=>{
     const size=measure(Buffer.from('hello '.repeat(1000)));
@@ -44,4 +44,10 @@ it('accepts legacy snapshots and rejects invalid fingerprints',()=>{
   expect(duplicateGroups(parseSnapshot({a:old,b:old}))).toEqual([]);
   expect(()=>parseSnapshot({a:{...old,sha256:'invalid'}})).toThrow();
   expect(parseSnapshot({a:measure(Buffer.from('abc'))}).a.sha256).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+});
+
+it('compares previous run totals independently of fixed baseline',()=>{
+  const section=historicalSection({a:{raw:1024,gzip:512,brotli:256}},{b:{raw:2048,gzip:1024,brotli:512}},123);
+  expect(section.rows[0]?.value).toBe('123');
+  expect(section.rows[1]?.value).toContain('−1.00 KiB');
 });
