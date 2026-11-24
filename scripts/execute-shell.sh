@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
+started="$(date +%s%3N)"
+finish() {
+  local status=$? elapsed
+  elapsed=$(( $(date +%s%3N) - started ))
+  printf 'duration-ms=%s\n' "$elapsed" >> "$GITHUB_OUTPUT"
+  printf '### Universal executor\n\n- Manager: %s\n- Exit code: %s\n- Install and execution: %s ms\n' "$PM" "$status" "$elapsed" >> "$GITHUB_STEP_SUMMARY"
+  exit "$status"
+}
+trap finish EXIT
 token="$ROD_EXEC_TOKEN"
 unset ROD_EXEC_TOKEN
 case "$LANGUAGE" in bash|javascript) ;; *) echo "Invalid language" >&2; exit 1;; esac

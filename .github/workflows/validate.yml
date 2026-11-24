@@ -135,4 +135,5 @@ jobs:
             return { ok: true };
       - env:
           RESULT: ${{ steps.inline.outputs.result }}
-        run: test "$RESULT" = '{"ok":true}'
+          DURATION: ${{ steps.inline.outputs.duration-ms }}
+        run: test "$RESULT" = '{"ok":true}' && [[ "$DURATION" =~ ^[0-9]+$ ]]

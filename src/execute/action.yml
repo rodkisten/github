@@ -25,6 +25,24 @@ inputs:
   language:
     description: bash or javascript
     default: bash
+  app-id:
+    description: Optional GitHub App ID
+    default: ''
+  private-key:
+    description: Optional GitHub App private key
+    default: ''
+  permission-contents:
+    description: App contents permission
+    default: read
+  permission-pull-requests:
+    description: App pull requests permission
+    default: ''
+  permission-actions:
+    description: App actions permission
+    default: ''
+  permission-issues:
+    description: App issues permission
+    default: ''
   token:
     description: Optional GitHub API token for JavaScript execution
     default: ''
@@ -35,6 +53,9 @@ inputs:
     description: Bash script file relative to workspace
     default: ''
 outputs:
+  duration-ms:
+    description: Bootstrap and execution duration in milliseconds (excluding runtime setup)
+    value: ${{ steps.execute.outputs.duration-ms }}
   result:
     description: JSON result of JavaScript execution
     value: ${{ steps.execute.outputs.result }}
@@ -69,6 +90,26 @@ runs:
       if: steps.detect.outputs.manager == 'bun'
       with:
         bun-version: ${{ steps.detect.outputs.version || 'latest' }}
+    - name: Validate App credentials
+      shell: bash
+      env:
+        HAS_ID: ${{ inputs.app-id != '' }}
+        HAS_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_ID" != "$HAS_KEY" ]]; then
+          echo "::error::Provide app-id and private-key together"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: ${{ inputs.permission-contents }}
+        permission-pull-requests: ${{ inputs.permission-pull-requests }}
+        permission-actions: ${{ inputs.permission-actions }}
+        permission-issues: ${{ inputs.permission-issues }}
     - id: execute
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -82,5 +123,5 @@ runs:
         FILE: ${{ inputs.file }}
         ACTION_ROOT: ${{ github.action_path }}
         LANGUAGE: ${{ inputs.language }}
-        ROD_EXEC_TOKEN: ${{ inputs.token }}
+        ROD_EXEC_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
       run: bash "$ACTION_ROOT/../../scripts/execute-shell.sh"
