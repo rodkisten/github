@@ -1,7 +1,7 @@
 // Composite shells cannot reliably preserve environment keys containing hyphens.
 // Restore the exact @actions/core input convention inside the Node process.
 const name = process.argv[2];
-const allowed = new Set(['commit', 'publish', 'create-pr', 'format-report', 'console', 'paths-filter']);
+const allowed = new Set(['commit', 'publish', 'create-pr', 'format-report', 'console', 'paths-filter', 'preview-report']);
 if (!allowed.has(name)) throw new Error('Unknown action: ' + name);
 for (const [key, value] of Object.entries(process.env)) {
   if (key.startsWith('ROD_INPUT_')) {
