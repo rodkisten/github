@@ -69,6 +69,74 @@ function renderReport(r, repository, runId) {
 		"_Managed by Rod Preview Report. Updated in place._"
 	].join("\n");
 }
+// src/preview-report/metrics.ts
+function seconds(start, end) {
+	if (!start || !end) return;
+	const n = (Date.parse(end) - Date.parse(start)) / 1e3;
+	return Number.isFinite(n) && n >= 0 ? n : void 0;
+}
+function workflowSections(jobs, artifacts) {
+	const completed = jobs.flatMap((j) => {
+		const duration = seconds(j.started_at, j.completed_at);
+		return duration === void 0 ? [] : [{
+			name: j.name,
+			duration
+		}];
+	});
+	const steps = jobs.flatMap((j) => (j.steps ?? []).flatMap((s) => {
+		const duration = seconds(s.started_at, s.completed_at);
+		return duration === void 0 ? [] : [{
+			name: j.name + " / " + s.name,
+			duration
+		}];
+	})).sort((a, b) => b.duration - a.duration);
+	const sum = completed.reduce((a, b) => a + b.duration, 0);
+	const slow = steps[0];
+	const live = artifacts.filter((a) => !a.expired);
+	return [
+		{
+			title: "Workflow intelligence (snapshot)",
+			rows: [
+				{
+					label: "Completed jobs",
+					value: completed.length + " / " + jobs.length
+				},
+				{
+					label: "Total completed job time",
+					value: sum.toFixed(1) + " s"
+				},
+				{
+					label: "Slowest completed step",
+					value: slow ? slow.name.slice(0, 300) + " · " + slow.duration.toFixed(1) + " s" : "Not available"
+				},
+				{
+					label: "Failed jobs",
+					value: String(jobs.filter((j) => j.conclusion === "failure").length)
+				},
+				{
+					label: "Available artifacts",
+					value: String(live.length)
+				}
+			]
+		},
+		{
+			title: "Slowest steps",
+			collapsed: true,
+			rows: steps.slice(0, 10).map((s) => ({
+				label: s.name.slice(0, 300),
+				value: s.duration.toFixed(1) + " s"
+			}))
+		},
+		{
+			title: "Artifacts",
+			collapsed: true,
+			rows: live.slice(0, 20).map((a) => ({
+				label: a.name,
+				value: (a.size_in_bytes / 1024).toFixed(2) + " KiB"
+			}))
+		}
+	];
+}
 // src/preview-report/bundle.ts
 function parseSnapshot(value) {
 	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid bundle snapshot");
@@ -245,6 +313,30 @@ runAction("Rod Preview Report", async () => {
 		const current = parseSnapshot(JSON.parse(readFileSync(inputs["bundle-file"], "utf8")));
 		const baseline = inputs["baseline-file"] ? parseSnapshot(JSON.parse(readFileSync(inputs["baseline-file"], "utf8"))) : void 0;
 		sections.push(...bundleSections(current, baseline));
+	}
+	try {
+		const run_id = import_github.context.runId;
+		const [jobs, artifacts] = await Promise.all([api.paginate(api.rest.actions.listJobsForWorkflowRunAttempt, {
+			owner,
+			repo,
+			run_id,
+			attempt_number: Number(process.env.GITHUB_RUN_ATTEMPT || 1),
+			per_page: 100
+		}), api.paginate(api.rest.actions.listWorkflowRunArtifacts, {
+			owner,
+			repo,
+			run_id,
+			per_page: 100
+		})]);
+		sections.push(...workflowSections(jobs, artifacts));
+	} catch {
+		sections.push({
+			title: "Workflow intelligence",
+			rows: [{
+				label: "Metrics",
+				value: "Unavailable (check Actions read permission)"
+			}]
+		});
 	}
 	const previous = previousVerifiedSha(existing?.body ?? void 0);
 	if (previous && previous !== report.sha) try {
