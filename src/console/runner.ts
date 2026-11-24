@@ -24,7 +24,7 @@ runAction('Shell Command', async () => {
     logger.item('Duration', `${execResult.durationMs}ms`, true);
 
     return execResult;
-  });
+  }, { isSuccess: result => result.exitCode === 0 });
 
   logger.divider('Outputs & Summary');
 

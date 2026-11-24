@@ -177,7 +177,7 @@ export class Logger {
     this.write(`${this.getIndent(isLast)}${style.dim(`${key}:`)} ${formattedValue}`);
   }
 
-  async step<T>(title: string, fn: () => Promise<T> | T, options?: { group?: boolean }): Promise<T> {
+  async step<T>(title: string, fn: () => Promise<T> | T, options?: { group?: boolean; isSuccess?: (result: T) => boolean }): Promise<T> {
     const start = performance.now();
     const useGitHubGroup = IS_GITHUB_ACTIONS && this.depth === 0 && (options?.group ?? true);
 
@@ -195,9 +195,12 @@ export class Logger {
     try {
       const result = await fn();
       const elapsed = formatDuration(performance.now() - start);
+      const succeeded = options?.isSuccess?.(result) ?? true;
       this.depth--;
 
-      if (this.depth === 0) {
+      if (!succeeded) {
+        this.write(`${this.getIndent(true)}${style.badgeError(' FAIL ')} ${style.red(title)} ${style.dim(`(${elapsed})`)}`);
+      } else if (this.depth === 0) {
         this.write(
           `${style.badgeSuccess(' PASS ')} ${style.bold(title)} ${style.dim(`(${elapsed})`)}`
         );
