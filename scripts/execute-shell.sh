@@ -34,5 +34,5 @@ if [[ "$INSTALL" != false && "$PM" != none ]]; then
   "$PM" "${args[@]}"
 fi
 if [[ "$LANGUAGE" == javascript ]]; then
-  ROD_EXEC_TOKEN="$token" node "$ACTION_ROOT/../../dist/execute-js.js"
+  ROD_EXEC_TOKEN="$token" node "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/dist/execute-js.js"
 elif [[ -n "$FILE" ]]; then bash -e -o pipefail -- "$FILE"; else bash -e -o pipefail -c "$SCRIPT"; fi
