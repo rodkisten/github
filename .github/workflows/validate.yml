@@ -83,3 +83,57 @@ jobs:
         with:
           name: action-catalog
           path: docs/ACTION_CATALOG.md
+
+  pnpm-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated pnpm fixture
+        run: |
+          mkdir -p .pnpm-smoke
+          printf '%s\n' '{"name":"pnpm-smoke","private":true,"packageManager":"pnpm@10.28.2"}' > .pnpm-smoke/package.json
+          printf '%s\n' "lockfileVersion: '9.0'" '' 'importers:' '  .: {}' > .pnpm-smoke/pnpm-lock.yaml
+      - uses: ./src/setup-pnpm
+        with:
+          working-directory: .pnpm-smoke
+          cache: 'false'
+          ignore-scripts: 'true'
+      - name: Verify pnpm version
+        run: test "$(pnpm --version)" = 10.28.2
+
+  executor-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p .executor-smoke
+      - uses: ./src/execute
+        with:
+          working-directory: .executor-smoke
+          script: test "$PM" = none
+      - uses: ./src/execute
+        with:
+          working-directory: .executor-smoke
+          package-manager: npm
+          install: 'false'
+          script: npm --version
+
+  executor-js-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci && npm run build
+      - id: inline
+        uses: ./src/execute
+        with:
+          package-manager: none
+          language: javascript
+          script: |
+            await exec('printf smoke');
+            return { ok: true };
+      - env:
+          RESULT: ${{ steps.inline.outputs.result }}
+          DURATION: ${{ steps.inline.outputs.duration-ms }}
+        run: test "$RESULT" = '{"ok":true}' && [[ "$DURATION" =~ ^[0-9]+$ ]]

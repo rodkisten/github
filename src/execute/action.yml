@@ -1,0 +1,127 @@
+name: Universal workspace executor
+description: Detect package manager, bootstrap runtime and execute shell code
+inputs:
+  working-directory:
+    description: Workspace root
+    default: '.'
+  package-manager:
+    description: auto, npm, pnpm, yarn, bun or none
+    default: auto
+  node-version:
+    description: Node version or version range
+    default: '24'
+  package-manager-version:
+    description: Override detected manager version
+    default: ''
+  install:
+    description: auto, true or false
+    default: auto
+  install-args:
+    description: Additional install arguments separated by newlines
+    default: ''
+  cache:
+    description: Enable dependency cache for npm, pnpm and yarn
+    default: 'true'
+  language:
+    description: bash or javascript
+    default: bash
+  app-id:
+    description: Optional GitHub App ID
+    default: ''
+  private-key:
+    description: Optional GitHub App private key
+    default: ''
+  permission-contents:
+    description: App contents permission
+    default: read
+  permission-pull-requests:
+    description: App pull requests permission
+    default: ''
+  permission-actions:
+    description: App actions permission
+    default: ''
+  permission-issues:
+    description: App issues permission
+    default: ''
+  token:
+    description: Optional GitHub API token for JavaScript execution
+    default: ''
+  script:
+    description: Inline Bash script
+    default: ''
+  file:
+    description: Bash script file relative to workspace
+    default: ''
+outputs:
+  duration-ms:
+    description: Bootstrap and execution duration in milliseconds (excluding runtime setup)
+    value: ${{ steps.execute.outputs.duration-ms }}
+  result:
+    description: JSON result of JavaScript execution
+    value: ${{ steps.execute.outputs.result }}
+  package-manager:
+    description: Detected manager
+    value: ${{ steps.detect.outputs.manager }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        WORKSPACE: ${{ inputs.working-directory }}
+        MANAGER: ${{ inputs.package-manager }}
+        VERSION: ${{ inputs.package-manager-version }}
+        SCRIPT: ${{ inputs.script }}
+        FILE: ${{ inputs.file }}
+      run: node "$ACTION_ROOT/../../scripts/execute-detect.mjs"
+    - uses: pnpm/action-setup@v4
+      if: steps.detect.outputs.manager == 'pnpm'
+      with:
+        version: ${{ steps.detect.outputs.version || '10' }}
+        package_json_file: ${{ inputs.working-directory }}/package.json
+        run_install: false
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache == 'true' && steps.detect.outputs.lockfile != '' && contains(fromJSON('["npm","pnpm"]'), steps.detect.outputs.manager) && steps.detect.outputs.manager || '' }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.detect.outputs.lockfile }}
+    - uses: oven-sh/setup-bun@v2
+      if: steps.detect.outputs.manager == 'bun'
+      with:
+        bun-version: ${{ steps.detect.outputs.version || 'latest' }}
+    - name: Validate App credentials
+      shell: bash
+      env:
+        HAS_ID: ${{ inputs.app-id != '' }}
+        HAS_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_ID" != "$HAS_KEY" ]]; then
+          echo "::error::Provide app-id and private-key together"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: ${{ inputs.permission-contents }}
+        permission-pull-requests: ${{ inputs.permission-pull-requests }}
+        permission-actions: ${{ inputs.permission-actions }}
+        permission-issues: ${{ inputs.permission-issues }}
+    - id: execute
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PM: ${{ steps.detect.outputs.manager }}
+        PM_VERSION: ${{ steps.detect.outputs.version }}
+        LOCKFILE: ${{ steps.detect.outputs.lockfile }}
+        INSTALL: ${{ inputs.install }}
+        INSTALL_ARGS: ${{ inputs.install-args }}
+        SCRIPT: ${{ inputs.script }}
+        FILE: ${{ inputs.file }}
+        ACTION_ROOT: ${{ github.action_path }}
+        LANGUAGE: ${{ inputs.language }}
+        ROD_EXEC_TOKEN: ${{ steps.auth.outputs.token || inputs.token }}
+      run: bash "$ACTION_ROOT/../../scripts/execute-shell.sh"

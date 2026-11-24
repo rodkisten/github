@@ -41,3 +41,19 @@ Run `node scripts/measure-bundles.mjs bundle.json dist/app.js dist/style.css` fr
 ### Shared banner assets
 
 Regenerate the committed catalog with `node scripts/generate-banners.mjs`. Consumers can use `https://raw.githubusercontent.com/rodkisten/github/main/assets/banners/shell/preview-ready.svg` as the report banner URL. Replace `shell` and `preview-ready` with a catalog project and event slug. Pin a commit instead of `main` for immutable assets. The raw URL is independent of GitHub Pages configuration.
+
+## Bundle Intelligence 2.0 integration
+
+- Vite asset hashes are normalized only for unique unmatched logical names; ambiguous matches remain unmatched.
+- New snapshots include optional SHA-256 fingerprints. Identical content groups estimate redundant raw bytes, not guaranteed network savings. Never delete files solely based on this report.
+- Set `history-artifact` to the artifact containing the previous successful PR snapshot, with the same JSON basename as `bundle-file`. The runner needs GitHub CLI and Actions read permission. Missing or expired snapshots do not fail publication. Search is limited to 100 successful runs of the same workflow and branch, with matching PR and head repository.
+- Artifact, commit and historical run rows link to GitHub. Artifact downloads require access and unexpired retention.
+- Comments are limited to 60,000 UTF-8 bytes before the verified revision marker; whole sections may be omitted.
+
+### Integration acceptance checklist
+
+- [ ] Shell: pin the released action and measurement script to the same revision.
+- [ ] Shell: verify fingerprint coverage and historical reference on PR #27.
+- [ ] Shell: inspect actual dashboard links and duplicate groups.
+- [ ] Userscripts: inventory build outputs and define comparable per-script measurement scope.
+- [ ] Userscripts: publish snapshot and validate dashboard before establishing a baseline.
