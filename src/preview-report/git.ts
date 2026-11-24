@@ -9,7 +9,7 @@ export interface GitFile {
 }
 export interface GitCommit {
   sha: string;
-  commit: { message: string; author: { name: string } | null };
+  commit: { message: string; author: { name?: string } | null };
 }
 
 export function gitSections(commits: GitCommit[], files: GitFile[], totals: {

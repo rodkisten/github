@@ -16,6 +16,12 @@ inputs:
   pr-number:
     required: true
     description: Pull request number
+  bundle-file:
+    description: Optional measured bundle snapshot JSON
+    required: false
+  baseline-file:
+    description: Optional baseline snapshot JSON measured with identical settings
+    required: false
   results-file:
     required: true
     description: JSON preview report metadata
@@ -56,5 +62,7 @@ runs:
         ROD_INPUT_GITHUB_TOKEN: ${{ steps.auth.outputs.token || inputs.github-token }}
         ROD_INPUT_BOT_LOGIN: ${{ steps.auth.outputs.app-slug != '' && format('{0}[bot]', steps.auth.outputs.app-slug) || inputs.bot-login }}
         ROD_INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        ROD_INPUT_BUNDLE_FILE: ${{ inputs.bundle-file }}
+        ROD_INPUT_BASELINE_FILE: ${{ inputs.baseline-file }}
         ROD_INPUT_RESULTS_FILE: ${{ inputs.results-file }}
       run: node "$ROD_ACTION_PATH/../../scripts/run-action.mjs" preview-report

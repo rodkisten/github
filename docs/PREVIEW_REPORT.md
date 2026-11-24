@@ -29,3 +29,7 @@ Statuses: success, failure, pending. Metrics are supplied by the caller, not mea
 ## Git intelligence
 
 PR totals come from GitHub's pull request API. Commit and file lists are paginated subject to GitHub API limits; displayed lists are capped at 20 commits and 40 files. Directory counts describe retrieved files only. A successful report records its verified SHA; later reports compare against that SHA when available, retaining it on pending or failed reports. The caller should serialize report publication per PR to avoid concurrent comment creation.
+
+## Bundle intelligence
+
+Run `node scripts/measure-bundles.mjs bundle.json dist/app.js dist/style.css` from the consumer workspace (use the script from this repository). Pass `bundle-file: bundle.json` and optionally `baseline-file: baseline.json`. Keep the baseline as a versioned snapshot or artifact; the action does not automatically replace it. Compare identical file scopes and compression settings (gzip level 9, Brotli quality 11). Totals sum independently compressed files, not a compressed archive. Increases are highlighted, not enforced as CI failures.

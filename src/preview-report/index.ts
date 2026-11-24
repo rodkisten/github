@@ -5,6 +5,7 @@ import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger } from '../utils/logger.js';
 import { MARKER, parseReport, renderReport } from './render.js';
 
+import { bundleSections, parseSnapshot } from './bundle.js';
 import { gitSections, previousVerifiedSha } from './git.js';
 
 runAction('Rod Preview Report', async () => {
@@ -17,6 +18,8 @@ runAction('Rod Preview Report', async () => {
       return n;
     }},
     'results-file': { required: true },
+    'bundle-file': { default: '' },
+    'baseline-file': { default: '' },
     'bot-login': { default: 'github-actions[bot]' },
   });
   const report = parseReport(JSON.parse(readFileSync(inputs['results-file'], 'utf8')));
@@ -39,6 +42,11 @@ runAction('Rod Preview Report', async () => {
     commits: pr.data.commits, files: pr.data.changed_files,
     additions: pr.data.additions, deletions: pr.data.deletions,
   });
+  if (inputs['bundle-file']) {
+    const current = parseSnapshot(JSON.parse(readFileSync(inputs['bundle-file'], 'utf8')));
+    const baseline = inputs['baseline-file'] ? parseSnapshot(JSON.parse(readFileSync(inputs['baseline-file'], 'utf8'))) : undefined;
+    sections.push(...bundleSections(current, baseline));
+  }
   const previous = previousVerifiedSha(existing?.body ?? undefined);
   if (previous && previous !== report.sha) {
     try {
