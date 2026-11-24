@@ -14,3 +14,22 @@ describe('preview report', () => {
     expect(() => parseReport({...report, url})).toThrow();
   });
 });
+
+describe('declarative dashboard', () => {
+  it('renders banner, collapsed metrics and resource links', () => {
+    const body = renderReport(parseReport({...report, banner: 'https://example.com/banner.svg',
+      sections: [{title: 'Build', collapsed: true, rows: [{label: 'Smoke test', value: 'Passed', status: 'success'}]}],
+      links: [{label: 'Artifacts', url: 'https://example.com/artifacts'}]}), 'owner/repo', 123);
+    expect(body).toContain('![Preview banner](https://example.com/banner.svg)');
+    expect(body).toContain('<details><summary>Build</summary>');
+    expect(body).toContain('| Smoke test | ✅ Passed |');
+    expect(body).toContain('[Artifacts](https://example.com/artifacts)');
+  });
+  it('rejects invalid nested values and unsafe links', () => {
+    expect(() => parseReport({...report, sections: [{title: 'Build', rows: [{label: 'Size', value: 42}]}]})).toThrow();
+    expect(() => parseReport({...report, banner: 'javascript:alert(1)'})).toThrow();
+  });
+  it('escapes table separators', () => {
+    expect(renderReport(parseReport({...report, sections: [{title: 'Build', rows: [{label: 'A|B', value: 'OK'}]}]}), 'owner/repo', 123)).toContain('A\\|B');
+  });
+});
