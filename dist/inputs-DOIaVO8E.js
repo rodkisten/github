@@ -19084,8 +19084,10 @@ var Logger = class {
 		try {
 			const result = await fn();
 			const elapsed = formatDuration(performance.now() - start);
+			const succeeded = options?.isSuccess?.(result) ?? true;
 			this.depth--;
-			if (this.depth === 0) this.write(`${style.badgeSuccess(" PASS ")} ${style.bold(title)} ${style.dim(`(${elapsed})`)}`);
+			if (!succeeded) this.write(`${this.getIndent(true)}${style.badgeError(" FAIL ")} ${style.red(title)} ${style.dim(`(${elapsed})`)}`);
+			else if (this.depth === 0) this.write(`${style.badgeSuccess(" PASS ")} ${style.bold(title)} ${style.dim(`(${elapsed})`)}`);
 			else this.write(`${this.getIndent(true)}${style.green("✔")} ${title} ${style.dim(`(${elapsed})`)}`);
 			return result;
 		} catch (err) {

@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname } from "node:path";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
-import { i as listTrackedFiles, n as gitSync, r as listChangedFiles } from "./git-Cp_vTGsB.js";
-import { t as summary } from "./summary-Cb6mg204.js";
-import { n as cmd } from "./cmd-Dfr8Spx5.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
+import { i as listTrackedFiles, n as gitSync, r as listChangedFiles } from "./git-PImH7G2U.js";
+import { t as summary } from "./summary-BYFxrPwG.js";
+import { n as cmd } from "./cmd-DSJikFMl.js";
 // src/format/process.ts
 async function execute(program, args) {
 	const res = await cmd(program, args).nothrow();

@@ -1,7 +1,7 @@
 import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { a as style, i as logger, n as setOutputs, o as require_core, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
-import { t as summary } from "./summary-Cb6mg204.js";
-import { r as runCommand } from "./cmd-Dfr8Spx5.js";
+import { a as style, i as logger, n as setOutputs, o as require_core, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
+import { t as summary } from "./summary-BYFxrPwG.js";
+import { r as runCommand } from "./cmd-DSJikFMl.js";
 // src/console/run-command.ts
 var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 // src/console/runner.ts
@@ -19,7 +19,7 @@ runAction("Shell Command", async () => {
 		logger.item("Exit code", execResult.exitCode);
 		logger.item("Duration", `${execResult.durationMs}ms`, true);
 		return execResult;
-	});
+	}, { isSuccess: (result) => result.exitCode === 0 });
 	logger.divider("Outputs & Summary");
 	setOutputs({
 		"exit-code": result.exitCode,
