@@ -163,6 +163,32 @@ const delta = (n, base) => {
 	const d = n - base;
 	return (d > 0 ? "+" : d < 0 ? "−" : "") + kib(Math.abs(d)) + (base ? " (" + (d / base * 100).toFixed(1) + "%)" : "");
 };
+function logicalName(name) {
+	return name.includes("/assets/") ? name.replace(/-[A-Za-z0-9_-]{8}(?=\.(?:m?js|css|wasm)$)/, "") : name;
+}
+function matchBundles(current, baseline) {
+	const matches = /* @__PURE__ */ new Map();
+	const used = /* @__PURE__ */ new Set();
+	for (const name of Object.keys(current)) if (Object.hasOwn(baseline, name)) {
+		matches.set(name, name);
+		used.add(name);
+	}
+	const group = (names) => {
+		const groups = /* @__PURE__ */ new Map();
+		for (const name of names) {
+			const key = logicalName(name);
+			groups.set(key, [...groups.get(key) ?? [], name]);
+		}
+		return groups;
+	};
+	const left = group(Object.keys(current).filter((n) => !matches.has(n)));
+	const right = group(Object.keys(baseline).filter((n) => !used.has(n)));
+	for (const [key, names] of left) {
+		const candidates = right.get(key);
+		if (names.length === 1 && candidates?.length === 1) matches.set(names[0], candidates[0]);
+	}
+	return matches;
+}
 function bundleSections(current, baseline) {
 	const now = total(current);
 	const before = baseline ? total(baseline) : void 0;
@@ -171,6 +197,14 @@ function bundleSections(current, baseline) {
 		"gzip",
 		"brotli"
 	];
+	const matches = baseline ? matchBundles(current, baseline) : /* @__PURE__ */ new Map();
+	const used = new Set(matches.values());
+	const category = (name) => /\.wasm$/i.test(name) ? "WASM" : /\.css$/i.test(name) ? "CSS" : /\.m?js$/i.test(name) ? "JavaScript" : "Other";
+	const subset = (snapshot, kind) => total(Object.fromEntries(Object.entries(snapshot).filter(([name]) => category(name) === kind)));
+	const changes = baseline ? Object.entries(current).map(([name, size]) => ({
+		name,
+		change: size.raw - (baseline[matches.get(name) ?? ""]?.raw ?? 0)
+	})).filter((x) => x.change > 0).sort((a, b) => b.change - a.change) : [];
 	return [
 		{
 			title: "Bundle totals",
@@ -185,15 +219,39 @@ function bundleSections(current, baseline) {
 			collapsed: true,
 			rows: Object.keys(current).sort((a, b) => current[b].raw - current[a].raw).slice(0, 40).map((name) => ({
 				label: name,
-				value: keys.map((k) => k + ": " + kib(current[name][k])).join(" · ") + (baseline ? Object.hasOwn(baseline, name) ? " · raw Δ " + delta(current[name].raw, baseline[name].raw) : " · New file" : "")
+				value: keys.map((k) => k + ": " + kib(current[name][k])).join(" · ") + (baseline ? matches.has(name) ? " · raw Δ " + delta(current[name].raw, baseline[matches.get(name)].raw) : " · New or unmatched file" : "")
 			}))
 		},
 		...baseline ? [{
 			title: "Removed bundles",
 			collapsed: true,
-			rows: Object.keys(baseline).filter((name) => !Object.hasOwn(current, name)).slice(0, 40).map((name) => ({
+			rows: Object.keys(baseline).filter((name) => !used.has(name)).slice(0, 40).map((name) => ({
 				label: name,
 				value: kib(baseline[name].raw)
+			}))
+		}] : [],
+		{
+			title: "Bundle composition",
+			rows: [
+				"WASM",
+				"JavaScript",
+				"CSS",
+				"Other"
+			].map((kind) => {
+				const size = subset(current, kind);
+				const old = baseline ? subset(baseline, kind) : void 0;
+				return {
+					label: kind,
+					value: keys.map((k) => k + ": " + kib(size[k]) + (old ? " (Δ " + delta(size[k], old[k]) + ")" : "")).join(" · ")
+				};
+			})
+		},
+		...baseline ? [{
+			title: "Largest raw increases",
+			collapsed: true,
+			rows: changes.slice(0, 10).map((x) => ({
+				label: x.name,
+				value: "+" + kib(x.change)
 			}))
 		}] : []
 	];
