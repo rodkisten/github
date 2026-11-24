@@ -12,6 +12,7 @@ const actions = discoverActions('src');
 const entries = {
   ...Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
   'format-report': './src/format/report.ts',
+  'console-run': './src/console/runner.ts',
 };
 
 export default defineConfig({
@@ -41,7 +42,7 @@ export default defineConfig({
   ],
 
   onSuccess() {
-    for (const name of actions) {
+    for (const name of Object.keys(entries)) {
       const srcYml = join('src', name, 'action.yml');
       if (!existsSync(srcYml)) continue;
 

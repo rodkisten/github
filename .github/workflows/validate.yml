@@ -65,3 +65,15 @@ jobs:
           title: '🧪 TypeScript Action integration'
           status: success
           details: 'Bundled Node 24 summary action executed successfully.'
+      - name: Smoke-test console runner
+        id: console-smoke
+        uses: ./src/console-run
+        with:
+          command: 'printf smoke-ok'
+      - name: Assert console runner outputs
+        env:
+          EXIT_CODE: ${{ steps.console-smoke.outputs.exit-code }}
+          DURATION: ${{ steps.console-smoke.outputs.duration-ms }}
+        run: |
+          test "$EXIT_CODE" = 0
+          [[ "$DURATION" =~ ^[0-9]+$ ]]
