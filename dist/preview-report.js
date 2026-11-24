@@ -69,6 +69,125 @@ function renderReport(r, repository, runId) {
 		"_Managed by Rod Preview Report. Updated in place._"
 	].join("\n");
 }
+// src/preview-report/bundle.ts
+function parseSnapshot(value) {
+	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid bundle snapshot");
+	const entries = Object.entries(value);
+	if (entries.length > 500) throw new Error("Too many bundle entries");
+	for (const [name, size] of entries) if (!name || name.length > 500 || !size || typeof size !== "object" || ![
+		"raw",
+		"gzip",
+		"brotli"
+	].every((k) => Number.isSafeInteger(size[k]) && size[k] >= 0)) throw new Error("Invalid bundle size: " + name);
+	return Object.fromEntries(entries);
+}
+const total = (snapshot) => Object.values(snapshot).reduce((a, b) => ({
+	raw: a.raw + b.raw,
+	gzip: a.gzip + b.gzip,
+	brotli: a.brotli + b.brotli
+}), {
+	raw: 0,
+	gzip: 0,
+	brotli: 0
+});
+const kib = (n) => (n / 1024).toFixed(2) + " KiB";
+const delta = (n, base) => {
+	const d = n - base;
+	return (d > 0 ? "+" : d < 0 ? "−" : "") + kib(Math.abs(d)) + (base ? " (" + (d / base * 100).toFixed(1) + "%)" : "");
+};
+function bundleSections(current, baseline) {
+	const now = total(current);
+	const before = baseline ? total(baseline) : void 0;
+	const keys = [
+		"raw",
+		"gzip",
+		"brotli"
+	];
+	return [
+		{
+			title: "Bundle totals",
+			rows: keys.map((k) => ({
+				label: k,
+				value: kib(now[k]) + (before ? " · Δ " + delta(now[k], before[k]) : ""),
+				...before ? { status: now[k] > before[k] ? "failure" : "success" } : {}
+			}))
+		},
+		{
+			title: "Bundle files (up to 40)",
+			collapsed: true,
+			rows: Object.keys(current).sort((a, b) => current[b].raw - current[a].raw).slice(0, 40).map((name) => ({
+				label: name,
+				value: keys.map((k) => k + ": " + kib(current[name][k])).join(" · ") + (baseline ? Object.hasOwn(baseline, name) ? " · raw Δ " + delta(current[name].raw, baseline[name].raw) : " · New file" : "")
+			}))
+		},
+		...baseline ? [{
+			title: "Removed bundles",
+			collapsed: true,
+			rows: Object.keys(baseline).filter((name) => !Object.hasOwn(current, name)).slice(0, 40).map((name) => ({
+				label: name,
+				value: kib(baseline[name].raw)
+			}))
+		}] : []
+	];
+}
+// src/preview-report/git.ts
+function gitSections(commits, files, totals) {
+	const directories = /* @__PURE__ */ new Map();
+	for (const file of files) {
+		const directory = file.filename.includes("/") ? file.filename.split("/")[0] : "(root)";
+		directories.set(directory, (directories.get(directory) ?? 0) + 1);
+	}
+	return [
+		{
+			title: "PR changes",
+			rows: [
+				{
+					label: "Commits",
+					value: String(totals.commits)
+				},
+				{
+					label: "Files changed",
+					value: String(totals.files)
+				},
+				{
+					label: "Lines",
+					value: "+" + totals.additions + " / -" + totals.deletions
+				},
+				{
+					label: "File coverage",
+					value: files.length + " of " + totals.files
+				}
+			]
+		},
+		{
+			title: "Commits (up to 20)",
+			collapsed: true,
+			rows: commits.slice(-20).map((c) => ({
+				label: c.sha.slice(0, 7),
+				value: (c.commit.message.split("\n")[0] + " · " + (c.commit.author?.name ?? "Unknown")).slice(0, 500)
+			}))
+		},
+		{
+			title: "Changed files (up to 40)",
+			collapsed: true,
+			rows: files.slice(0, 40).map((f) => ({
+				label: f.status,
+				value: ((f.previous_filename ? f.previous_filename + " → " : "") + f.filename + " (+" + f.additions + " / -" + f.deletions + ")").slice(0, 500)
+			}))
+		},
+		{
+			title: "Top-level directories (retrieved files)",
+			collapsed: true,
+			rows: [...directories].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([label, count]) => ({
+				label,
+				value: String(count)
+			}))
+		}
+	];
+}
+function previousVerifiedSha(body) {
+	return body?.match(/^<!-- rod-preview-verified-sha:([a-f0-9]{40}) -->$/m)?.[1];
+}
 // src/preview-report/index.ts
 runAction("Rod Preview Report", async () => {
 	const { owner, repo } = import_github.context.repo;
@@ -86,6 +205,8 @@ runAction("Rod Preview Report", async () => {
 			}
 		},
 		"results-file": { required: true },
+		"bundle-file": { default: "" },
+		"baseline-file": { default: "" },
 		"bot-login": { default: "github-actions[bot]" }
 	});
 	const report = parseReport(JSON.parse(readFileSync(inputs["results-file"], "utf8")));
@@ -107,7 +228,73 @@ runAction("Rod Preview Report", async () => {
 		issue_number: pull_number,
 		per_page: 100
 	})).find((c) => c.body?.startsWith("<!-- rod-preview-report:v1 -->") && c.user?.login === login);
-	const body = renderReport(report, owner + "/" + repo, import_github.context.runId);
+	const params = {
+		owner,
+		repo,
+		pull_number,
+		per_page: 100
+	};
+	const [commits, files] = await Promise.all([api.paginate(api.rest.pulls.listCommits, params), api.paginate(api.rest.pulls.listFiles, params)]);
+	const sections = gitSections(commits, files, {
+		commits: pr.data.commits,
+		files: pr.data.changed_files,
+		additions: pr.data.additions,
+		deletions: pr.data.deletions
+	});
+	if (inputs["bundle-file"]) {
+		const current = parseSnapshot(JSON.parse(readFileSync(inputs["bundle-file"], "utf8")));
+		const baseline = inputs["baseline-file"] ? parseSnapshot(JSON.parse(readFileSync(inputs["baseline-file"], "utf8"))) : void 0;
+		sections.push(...bundleSections(current, baseline));
+	}
+	const previous = previousVerifiedSha(existing?.body ?? void 0);
+	if (previous && previous !== report.sha) try {
+		const comparison = await api.rest.repos.compareCommits({
+			owner,
+			repo,
+			base: previous,
+			head: report.sha,
+			per_page: 1
+		});
+		sections.push({
+			title: "Since last verified preview",
+			rows: [
+				{
+					label: "Previous revision",
+					value: previous.slice(0, 7)
+				},
+				{
+					label: "Comparison",
+					value: comparison.data.status
+				},
+				{
+					label: "Ahead / behind",
+					value: comparison.data.ahead_by + " / " + comparison.data.behind_by
+				}
+			]
+		});
+	} catch {
+		sections.push({
+			title: "Since last verified preview",
+			rows: [{
+				label: "Comparison",
+				value: "Unavailable"
+			}]
+		});
+	}
+	const latest = await api.rest.pulls.get({
+		owner,
+		repo,
+		pull_number
+	});
+	if (latest.data.state !== "open" || latest.data.head.sha !== report.sha || latest.data.base.sha !== pr.data.base.sha) {
+		logger.info("Skipping report because PR changed during collection");
+		return;
+	}
+	const verified = report.status === "success" ? report.sha : previous;
+	const body = renderReport({
+		...report,
+		sections: [...report.sections ?? [], ...sections]
+	}, owner + "/" + repo, import_github.context.runId) + (verified ? "\n<!-- rod-preview-verified-sha:" + verified + " -->" : "");
 	const result = existing ? await api.rest.issues.updateComment({
 		owner,
 		repo,

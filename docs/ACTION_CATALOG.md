@@ -436,6 +436,8 @@ Runtime: `composite`
 | `github-token` | No |  | GitHub App installation token |
 | `bot-login` | No | github-actions[bot] | Comment owner login when using an existing token |
 | `pr-number` | Yes |  | Pull request number |
+| `bundle-file` | No |  | Optional measured bundle snapshot JSON |
+| `baseline-file` | No |  | Optional baseline snapshot JSON measured with identical settings |
 | `results-file` | Yes |  | JSON preview report metadata |
 
 ### Outputs
