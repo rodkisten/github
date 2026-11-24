@@ -7,6 +7,7 @@ export interface SummarySection {
   level?: 1 | 2 | 3;
   text?: string;
   table?: SummaryRow[];
+  kv?: Record<string, string | number | boolean>;
   keyValue?: Record<string, string | number | boolean>;
   details?: {
     summary: string;
@@ -77,7 +78,8 @@ class SummaryBuilder {
 
     for (const section of sections) {
       if (section.text) this.text(section.text);
-      if (section.kv) this.kv(section.kv);
+      const entries = section.kv ?? section.keyValue;
+      if (entries) this.kv(entries);
       if (section.table) this.table(section.table);
       if (section.details) {
         this.details(section.details.summary, section.details.content, section.details.codeLang);

@@ -105,9 +105,12 @@ async function runMain(): Promise<void> {
       })
     );
 
+    const appSlug = appInfo.data?.slug;
+    if (!appSlug) throw new Error('GitHub App metadata did not include a slug');
+
     const installationId = await resolveInstallationId(appAuth.token, owner);
     logger.item('Installation ID', installationId);
-    logger.item('App Slug', appInfo.data.slug);
+    logger.item('App Slug', appSlug);
 
     const installationAuth = await logger.spin('Requesting scoped installation token', () =>
       auth({
@@ -118,7 +121,7 @@ async function runMain(): Promise<void> {
       })
     );
 
-    return { token: installationAuth.token, appSlug: appInfo.data.slug };
+    return { token: installationAuth.token, appSlug: appSlug };
   });
 
   logger.divider('Outputs & State');

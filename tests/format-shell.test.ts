@@ -9,19 +9,19 @@ describe('shell dialect detection and validation', () => {
     expect(shellDialect('install.bash')).toBe('bash');
     expect(shellDialect('install.sh')).toBe('posix');
   });
-  it('does not send zsh to shfmt or shellcheck', () => {
+  it('does not send zsh to shfmt or shellcheck', async () => {
     const calls: string[] = [];
-    const issues = shellTools('.zshrc', 'fix', true, (program) => { calls.push(program); return ok; });
+    const issues = await shellTools('.zshrc', 'fix', true, (program) => { calls.push(program); return ok; });
     expect(calls).toEqual(['zsh']);
     expect(issues[0]?.status).toBe('ok');
   });
-  it('runs formatter and shellcheck for bash', () => {
+  it('runs formatter and shellcheck for bash', async () => {
     const calls: string[] = [];
-    shellTools('script.bash', 'check', true, (program) => { calls.push(program); return ok; });
+    await shellTools('script.bash', 'check', true, (program) => { calls.push(program); return ok; });
     expect(calls).toEqual(['shfmt', 'shellcheck', 'bash']);
   });
-  it('reports missing tools instead of silently passing', () => {
-    const issues = shellTools('script.sh', 'check', false, () => ({ ...ok, ok: false, missing: true }));
+  it('reports missing tools instead of silently passing', async () => {
+    const issues = await shellTools('script.sh', 'check', false, () => ({ ...ok, ok: false, missing: true }));
     expect(issues[0]?.status).toBe('skipped');
   });
 });
