@@ -1,0 +1,28 @@
+name: Collect changed files
+description: Collect changed and untracked files matching Git pathspecs into an atomic commit payload
+inputs:
+  pathspecs:
+    description: Newline-separated Git pathspecs
+    required: true
+outputs:
+  changed:
+    description: Whether matching files changed
+    value: ${{ steps.collect.outputs.changed }}
+  files-path:
+    description: Path to generated JSON payload
+    value: ${{ steps.collect.outputs.files-path }}
+  count:
+    description: Number of collected files
+    value: ${{ steps.collect.outputs.count }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - id: collect
+      shell: bash
+      env:
+        ROD_ACTION_PATH: ${{ github.action_path }}
+        ROD_PATHSPECS: ${{ inputs.pathspecs }}
+      run: node "$ROD_ACTION_PATH/../../scripts/collect-changes.mjs"

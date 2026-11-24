@@ -6,6 +6,7 @@ Generated from public action manifests. Do not edit manually.
 
 - [app-token](#app-token): Mint a scoped GitHub App installation token with automatic post-job revocation
 - [ci-summary](#ci-summary): Write a standardized GitHub Actions job summary
+- [collect-changes](#collect-changes): Collect changed and untracked files matching Git pathspecs into an atomic commit payload
 - [commit](#commit): Atomically commit multiple files through the Git Database API using a GitHub App token
 - [console-run](#console-run): Instrument a shell command with duration, exit code and GitHub step summary
 - [console](#console): Resolve central YAML settings, run optional formatting, and collect GitHub job/step notification candidates
@@ -83,6 +84,36 @@ None.
 - uses: rodkisten/github/src/ci-summary@main
   with:
     status: "<provide status>"
+```
+
+See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
+
+## collect-changes
+
+Collect changed and untracked files matching Git pathspecs into an atomic commit payload
+
+Runtime: `composite`
+
+### Inputs
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `pathspecs` | Yes |  | Newline-separated Git pathspecs |
+
+### Outputs
+
+| Output | Description |
+|---|---|
+| `changed` | Whether matching files changed |
+| `files-path` | Path to generated JSON payload |
+| `count` | Number of collected files |
+
+### Usage template
+
+```yaml
+- uses: rodkisten/github/src/collect-changes@main
+  with:
+    pathspecs: "<provide pathspecs>"
 ```
 
 See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
