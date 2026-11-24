@@ -38,5 +38,5 @@
   "engines": {
     "node": ">=24"
   },
-  "version": "1.23.0"
+  "version": "1.23.1"
 }
