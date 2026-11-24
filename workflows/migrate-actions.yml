@@ -1,0 +1,377 @@
+
+name: "📦 Generate Public Actions"
+
+run-name: "📦 Public Actions · ${{ inputs.target_branch }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Branch to migrate
+        required: true
+        default: feat/preview-report-integration
+        type: string
+      dry_run:
+        description: Validate without committing
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-actions-${{ inputs.target_branch }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: "🏗️ Generate · Validate · Publish"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: "🤖 Authenticate GitHub App"
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: "📥 Checkout target branch"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+
+      - name: "🔄 Synchronize with main"
+        env:
+          BRANCH: ${{ inputs.target_branch }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "${{ steps.app.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app.outputs.app-slug }}[bot]@users.noreply.github.com"
+
+          git check-ref-format --branch "$BRANCH"
+
+          git fetch origin main
+
+          if [[ "$BRANCH" != "main" ]]; then
+            git merge --no-edit origin/main
+          fi
+
+      - name: "🟩 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: "📦 Install dependencies"
+        run: npm ci --no-audit --no-fund
+
+      - name: "⚙️ Create public action generator"
+        shell: bash
+        run: |
+          mkdir -p scripts
+
+          cat > scripts/generate-public-actions.mjs <<'EOF'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { fileURLToPath } from 'node:url';
+          import { parse, stringify } from 'yaml';
+
+          const root = path.resolve(
+            path.dirname(fileURLToPath(import.meta.url)),
+            '..',
+          );
+
+          const marker = '# Generated public action. DO NOT EDIT.';
+          const check = process.argv.includes('--check');
+          const expected = new Set();
+          const errors = [];
+
+          function rewrite(manifest) {
+            const runs = manifest.runs;
+
+            for (const key of ['main', 'pre', 'post']) {
+              if (typeof runs[key] === 'string') {
+                runs[key] = runs[key].replace(
+                  /^\.\.\/\.\.\//,
+                  '../',
+                );
+              }
+            }
+
+            for (const step of runs.steps ?? []) {
+              if (typeof step.run === 'string') {
+                step.run = step.run.replace(
+                  /(\$[A-Z_]+|\$\{\{ github\.action_path \}\})\/\.\.\/\.\.\//g,
+                  '$1/../',
+                );
+              }
+            }
+
+            return manifest;
+          }
+
+          for (const entry of fs.readdirSync(
+            path.join(root, 'src'),
+            { withFileTypes: true },
+          )) {
+            if (!entry.isDirectory()) continue;
+
+            const name = entry.name;
+            const source = path.join(
+              root, 'src', name, 'action.yml',
+            );
+
+            if (!fs.existsSync(source)) continue;
+
+            const dir = path.join(root, name);
+            const output = path.join(dir, 'action.yml');
+
+            expected.add(name);
+
+            const manifest = rewrite(
+              parse(fs.readFileSync(source, 'utf8')),
+            );
+
+            if (!manifest.runs?.using) {
+              throw new Error(`Invalid action: ${name}`);
+            }
+
+            const content = [
+              marker,
+              `# Source: src/${name}/action.yml`,
+              '',
+              stringify(manifest),
+            ].join('\n');
+
+            const previous = fs.existsSync(output)
+              ? fs.readFileSync(output, 'utf8')
+              : null;
+
+            if (previous !== null &&
+                !previous.startsWith(marker)) {
+              throw new Error(
+                `Unmanaged manifest: ${output}`,
+              );
+            }
+
+            if (check) {
+              if (previous !== content) {
+                errors.push(`Outdated: ${name}`);
+              }
+            } else {
+              fs.mkdirSync(dir, { recursive: true });
+              fs.writeFileSync(output, content);
+            }
+
+            for (const key of ['main', 'pre', 'post']) {
+              const target = manifest.runs[key];
+
+              if (typeof target === 'string' &&
+                  !fs.existsSync(path.resolve(dir, target))) {
+                errors.push(`${name}: missing ${target}`);
+              }
+            }
+
+            console.log(`✓ ${name}/action.yml`);
+          }
+
+          for (const entry of fs.readdirSync(root, {
+            withFileTypes: true,
+          })) {
+            if (!entry.isDirectory()) continue;
+            if (expected.has(entry.name)) continue;
+
+            const dir = path.join(root, entry.name);
+            const file = path.join(dir, 'action.yml');
+
+            if (!fs.existsSync(file)) continue;
+
+            if (!fs.readFileSync(file, 'utf8')
+              .startsWith(marker)) continue;
+
+            if (check) {
+              errors.push(`Obsolete: ${entry.name}`);
+            } else {
+              fs.unlinkSync(file);
+
+              if (!fs.readdirSync(dir).length) {
+                fs.rmdirSync(dir);
+              }
+            }
+          }
+
+          if (errors.length) {
+            console.error(errors.join('\n'));
+            process.exit(1);
+          }
+
+          console.log(
+            `\n✓ ${expected.size} public actions`,
+          );
+          EOF
+
+      - name: "🔧 Integrate with build and release"
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+
+          const pkg = JSON.parse(
+            fs.readFileSync('package.json', 'utf8'),
+          );
+
+          pkg.scripts['actions:generate'] =
+            'node scripts/generate-public-actions.mjs';
+
+          pkg.scripts['actions:check'] =
+            'node scripts/generate-public-actions.mjs --check';
+
+          if (!pkg.scripts.build.includes('actions:generate')) {
+            pkg.scripts.build += ' && npm run actions:generate';
+          }
+
+          fs.writeFileSync(
+            'package.json',
+            JSON.stringify(pkg, null, 2) + '\n',
+          );
+
+          const release = '.github/workflows/release.yml';
+
+          let yaml = fs.readFileSync(release, 'utf8');
+
+          const original =
+            'git add -f -A dist/ docs/ACTION_CATALOG.md';
+
+          const replacement =
+            original + " ':(glob)*/action.yml'";
+
+          if (!yaml.includes(replacement)) {
+            if (!yaml.includes(original)) {
+              throw new Error('Release staging not recognized');
+            }
+
+            yaml = yaml.replace(original, replacement);
+          }
+
+          fs.writeFileSync(release, yaml);
+          EOF
+
+      - name: "🔎 Typecheck"
+        run: npm run typecheck
+
+      - name: "🧪 Run tests"
+        run: npm test
+
+      - name: "🏗️ Build and generate public actions"
+        run: npm run build
+
+      - name: "🛡️ Validate generated entrypoints"
+        run: |
+          npm run actions:check
+          node scripts/validate-actions.mjs
+
+      - name: "📚 Generate documentation"
+        run: |
+          npm run docs:actions
+
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+
+          const actions = fs.readdirSync('src')
+            .filter(name =>
+              fs.existsSync(`src/${name}/action.yml`)
+            )
+            .sort();
+
+          const lines = [
+            '# Public GitHub Actions',
+            '',
+            'Generated automatically from src/.',
+            '',
+            '| Action | Public entrypoint |',
+            '|---|---|',
+            ...actions.map(name =>
+              `| ${name} | \`rodkisten/github/${name}@main\` |`
+            ),
+            '',
+            'Legacy src/ entrypoints remain supported.',
+            '',
+          ];
+
+          fs.writeFileSync(
+            'docs/PUBLIC_ACTIONS.md',
+            lines.join('\n'),
+          );
+          EOF
+
+      - name: "📋 Review changes"
+        run: |
+          git status --short
+          git diff --check
+          git diff --stat
+
+      - name: "💾 Commit and push"
+        id: publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          BRANCH: ${{ inputs.target_branch }}
+        run: |
+          set -euo pipefail
+
+          git add -- \
+            package.json \
+            scripts/generate-public-actions.mjs \
+            .github/workflows/release.yml \
+            docs/PUBLIC_ACTIONS.md \
+            docs/ACTION_CATALOG.md
+
+          git add -f -A -- dist/ ':(glob)*/action.yml'
+
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(actions): generate root-level public entrypoints"
+          fi
+
+          git push origin "HEAD:refs/heads/$BRANCH"
+
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: "📊 Migration summary"
+        if: always()
+        env:
+          BRANCH: ${{ inputs.target_branch }}
+          SHA: ${{ steps.publish.outputs.sha }}
+          STATUS: ${{ job.status }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "# 📦 Public Actions"
+            echo
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Status | $STATUS |"
+            echo "| Branch | $BRANCH |"
+            echo "| Dry run | $DRY_RUN |"
+            echo "| Commit | ${SHA:-Not published} |"
+            echo
+            echo "## Generated entrypoints"
+            echo
+            echo "| Action | Usage |"
+            echo "|---|---|"
+
+            for file in */action.yml; do
+              [[ -f "$file" ]] || continue
+
+              if grep -q '^# Generated public action' "$file"; then
+                name="${file%/action.yml}"
+                echo "| $name | \`rodkisten/github/$name@main\` |"
+              fi
+            done
+
+            echo
+            echo "[Open PR #13](https://github.com/rodkisten/github/pull/13)"
+          } >> "$GITHUB_STEP_SUMMARY"
