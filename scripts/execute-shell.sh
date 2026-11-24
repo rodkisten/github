@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+token="$ROD_EXEC_TOKEN"
+unset ROD_EXEC_TOKEN
+case "$LANGUAGE" in bash|javascript) ;; *) echo "Invalid language" >&2; exit 1;; esac
 case "$INSTALL" in auto|true|false) ;; *) echo "Invalid install mode" >&2; exit 1;; esac
 if [[ "$PM" == yarn ]]; then
   npm install --global corepack
@@ -21,4 +24,6 @@ if [[ "$INSTALL" != false && "$PM" != none ]]; then
   while IFS= read -r arg; do [[ -z "$arg" ]] || args+=("$arg"); done <<< "$INSTALL_ARGS"
   "$PM" "${args[@]}"
 fi
-if [[ -n "$FILE" ]]; then bash -e -o pipefail -- "$FILE"; else bash -e -o pipefail -c "$SCRIPT"; fi
+if [[ "$LANGUAGE" == javascript ]]; then
+  ROD_EXEC_TOKEN="$token" node "$ACTION_ROOT/../../dist/execute-js.js"
+elif [[ -n "$FILE" ]]; then bash -e -o pipefail -- "$FILE"; else bash -e -o pipefail -c "$SCRIPT"; fi

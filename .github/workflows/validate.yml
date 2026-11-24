@@ -116,3 +116,23 @@ jobs:
           package-manager: npm
           install: 'false'
           script: npm --version
+
+  executor-js-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci && npm run build
+      - id: inline
+        uses: ./src/execute
+        with:
+          package-manager: none
+          language: javascript
+          script: |
+            await exec('printf smoke');
+            return { ok: true };
+      - env:
+          RESULT: ${{ steps.inline.outputs.result }}
+        run: test "$RESULT" = '{"ok":true}'

@@ -13,6 +13,7 @@ const entries = {
   ...Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
   'format-report': './src/format/report.ts',
   'console-run': './src/console/runner.ts',
+  'execute-js': './src/execute/javascript.ts',
 };
 
 export default defineConfig({

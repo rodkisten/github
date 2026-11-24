@@ -22,6 +22,12 @@ inputs:
   cache:
     description: Enable dependency cache for npm, pnpm and yarn
     default: 'true'
+  language:
+    description: bash or javascript
+    default: bash
+  token:
+    description: Optional GitHub API token for JavaScript execution
+    default: ''
   script:
     description: Inline Bash script
     default: ''
@@ -29,6 +35,9 @@ inputs:
     description: Bash script file relative to workspace
     default: ''
 outputs:
+  result:
+    description: JSON result of JavaScript execution
+    value: ${{ steps.execute.outputs.result }}
   package-manager:
     description: Detected manager
     value: ${{ steps.detect.outputs.manager }}
@@ -60,7 +69,8 @@ runs:
       if: steps.detect.outputs.manager == 'bun'
       with:
         bun-version: ${{ steps.detect.outputs.version || 'latest' }}
-    - shell: bash
+    - id: execute
+      shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
         PM: ${{ steps.detect.outputs.manager }}
@@ -71,4 +81,6 @@ runs:
         SCRIPT: ${{ inputs.script }}
         FILE: ${{ inputs.file }}
         ACTION_ROOT: ${{ github.action_path }}
+        LANGUAGE: ${{ inputs.language }}
+        ROD_EXEC_TOKEN: ${{ inputs.token }}
       run: bash "$ACTION_ROOT/../../scripts/execute-shell.sh"
