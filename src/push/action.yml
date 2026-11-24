@@ -31,7 +31,7 @@ runs:
         fi
     - id: auth
       if: inputs.app-id != '' && inputs.private-key != ''
-      uses: rodkisten/github/src/app-token@main
+      uses: actions/create-github-app-token@v2
       with:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.private-key }}
