@@ -33,3 +33,7 @@ PR totals come from GitHub's pull request API. Commit and file lists are paginat
 ## Bundle intelligence
 
 Run `node scripts/measure-bundles.mjs bundle.json dist/app.js dist/style.css` from the consumer workspace (use the script from this repository). Pass `bundle-file: bundle.json` and optionally `baseline-file: baseline.json`. Keep the baseline as a versioned snapshot or artifact; the action does not automatically replace it. Compare identical file scopes and compression settings (gzip level 9, Brotli quality 11). Totals sum independently compressed files, not a compressed archive. Increases are highlighted, not enforced as CI failures.
+
+## Branding and workflow intelligence
+
+`config/projects.json` is the shared project identity catalog. Generate a banner using `node scripts/render-banner.mjs shell 'Preview ready' banner.svg`. Publish the SVG to a trusted HTTPS location and pass its URL as `banner`. The script does not publish assets. Emoji rendering depends on the SVG renderer's installed fonts. Workflow metrics are a snapshot of the current attempt, not final elapsed time: summed completed job durations may overlap. Running steps are excluded. The App needs Actions read permission; unavailable metrics do not block publication.

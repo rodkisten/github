@@ -5,6 +5,7 @@ import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger } from '../utils/logger.js';
 import { MARKER, parseReport, renderReport } from './render.js';
 
+import { workflowSections } from './metrics.js';
 import { bundleSections, parseSnapshot } from './bundle.js';
 import { gitSections, previousVerifiedSha } from './git.js';
 
@@ -46,6 +47,16 @@ runAction('Rod Preview Report', async () => {
     const current = parseSnapshot(JSON.parse(readFileSync(inputs['bundle-file'], 'utf8')));
     const baseline = inputs['baseline-file'] ? parseSnapshot(JSON.parse(readFileSync(inputs['baseline-file'], 'utf8'))) : undefined;
     sections.push(...bundleSections(current, baseline));
+  }
+  try {
+    const run_id = github.context.runId;
+    const [jobs, artifacts] = await Promise.all([
+      api.paginate(api.rest.actions.listJobsForWorkflowRunAttempt, { owner, repo, run_id, attempt_number: Number(process.env.GITHUB_RUN_ATTEMPT || 1), per_page: 100 }),
+      api.paginate(api.rest.actions.listWorkflowRunArtifacts, { owner, repo, run_id, per_page: 100 }),
+    ]);
+    sections.push(...workflowSections(jobs, artifacts));
+  } catch {
+    sections.push({title:'Workflow intelligence',rows:[{label:'Metrics',value:'Unavailable (check Actions read permission)'}]});
   }
   const previous = previousVerifiedSha(existing?.body ?? undefined);
   if (previous && previous !== report.sha) {

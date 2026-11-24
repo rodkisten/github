@@ -1,0 +1,57 @@
+{
+  "github": {
+    "emoji": "🤖",
+    "color": "#64748b",
+    "name": "Shared Actions"
+  },
+  "shell": {
+    "emoji": "🐚",
+    "color": "#8b5cf6",
+    "name": "Shell Workbench"
+  },
+  "userscripts-cf": {
+    "emoji": "🧩",
+    "color": "#2563eb",
+    "name": "Userscripts"
+  },
+  "photointel": {
+    "emoji": "📸",
+    "color": "#db2777",
+    "name": "Photo Intelligence"
+  },
+  "orb": {
+    "emoji": "🪐",
+    "color": "#6366f1",
+    "name": "orb"
+  },
+  "jardim": {
+    "emoji": "🌻",
+    "color": "#ca8a04",
+    "name": "Jardim"
+  },
+  "ast-explorer": {
+    "emoji": "🌳",
+    "color": "#0d9488",
+    "name": "AST Explorer"
+  },
+  "eita": {
+    "emoji": "⚡",
+    "color": "#ea580c",
+    "name": "Eita"
+  },
+  "rodtui": {
+    "emoji": "🦀",
+    "color": "#dc2626",
+    "name": "RodTUI"
+  },
+  "ejc": {
+    "emoji": "💌",
+    "color": "#be185d",
+    "name": "EJC"
+  },
+  "manage": {
+    "emoji": "🎛️",
+    "color": "#0891b2",
+    "name": "Rod Manage"
+  }
+}
