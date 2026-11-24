@@ -6,7 +6,8 @@
     "build": "tsdown",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "release": "semantic-release"
+    "release": "semantic-release",
+    "prebuild": "node scripts/check-source-layout.mjs"
   },
   "dependencies": {
     "@actions/core": "^2.0.0",
