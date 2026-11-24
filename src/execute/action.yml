@@ -1,0 +1,74 @@
+name: Universal workspace executor
+description: Detect package manager, bootstrap runtime and execute shell code
+inputs:
+  working-directory:
+    description: Workspace root
+    default: '.'
+  package-manager:
+    description: auto, npm, pnpm, yarn, bun or none
+    default: auto
+  node-version:
+    description: Node version or version range
+    default: '24'
+  package-manager-version:
+    description: Override detected manager version
+    default: ''
+  install:
+    description: auto, true or false
+    default: auto
+  install-args:
+    description: Additional install arguments separated by newlines
+    default: ''
+  cache:
+    description: Enable dependency cache for npm, pnpm and yarn
+    default: 'true'
+  script:
+    description: Inline Bash script
+    default: ''
+  file:
+    description: Bash script file relative to workspace
+    default: ''
+outputs:
+  package-manager:
+    description: Detected manager
+    value: ${{ steps.detect.outputs.manager }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        WORKSPACE: ${{ inputs.working-directory }}
+        MANAGER: ${{ inputs.package-manager }}
+        VERSION: ${{ inputs.package-manager-version }}
+        SCRIPT: ${{ inputs.script }}
+        FILE: ${{ inputs.file }}
+      run: node "$ACTION_ROOT/../../scripts/execute-detect.mjs"
+    - uses: pnpm/action-setup@v4
+      if: steps.detect.outputs.manager == 'pnpm'
+      with:
+        version: ${{ steps.detect.outputs.version || '10' }}
+        package_json_file: ${{ inputs.working-directory }}/package.json
+        run_install: false
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache == 'true' && steps.detect.outputs.lockfile != '' && contains(fromJSON('["npm","pnpm"]'), steps.detect.outputs.manager) && steps.detect.outputs.manager || '' }}
+        cache-dependency-path: ${{ inputs.working-directory }}/${{ steps.detect.outputs.lockfile }}
+    - uses: oven-sh/setup-bun@v2
+      if: steps.detect.outputs.manager == 'bun'
+      with:
+        bun-version: ${{ steps.detect.outputs.version || 'latest' }}
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PM: ${{ steps.detect.outputs.manager }}
+        PM_VERSION: ${{ steps.detect.outputs.version }}
+        LOCKFILE: ${{ steps.detect.outputs.lockfile }}
+        INSTALL: ${{ inputs.install }}
+        INSTALL_ARGS: ${{ inputs.install-args }}
+        SCRIPT: ${{ inputs.script }}
+        FILE: ${{ inputs.file }}
+        ACTION_ROOT: ${{ github.action_path }}
+      run: bash "$ACTION_ROOT/../../scripts/execute-shell.sh"

@@ -91,8 +91,8 @@ jobs:
       - name: Create isolated pnpm fixture
         run: |
           mkdir -p .pnpm-smoke
-          printf '%s\\n' '{"name":"pnpm-smoke","private":true,"packageManager":"pnpm@10.28.2"}' > .pnpm-smoke/package.json
-          printf '%s\\n' "lockfileVersion: '9.0'" '' 'importers:' '  .: {}' > .pnpm-smoke/pnpm-lock.yaml
+          printf '%s\n' '{"name":"pnpm-smoke","private":true,"packageManager":"pnpm@10.28.2"}' > .pnpm-smoke/package.json
+          printf '%s\n' "lockfileVersion: '9.0'" '' 'importers:' '  .: {}' > .pnpm-smoke/pnpm-lock.yaml
       - uses: ./src/setup-pnpm
         with:
           working-directory: .pnpm-smoke
@@ -100,3 +100,19 @@ jobs:
           ignore-scripts: 'true'
       - name: Verify pnpm version
         run: test "$(pnpm --version)" = 10.28.2
+
+  executor-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p .executor-smoke
+      - uses: ./src/execute
+        with:
+          working-directory: .executor-smoke
+          script: test "$PM" = none
+      - uses: ./src/execute
+        with:
+          working-directory: .executor-smoke
+          package-manager: npm
+          install: 'false'
+          script: npm --version
