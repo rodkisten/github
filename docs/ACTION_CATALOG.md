@@ -11,6 +11,7 @@ Generated from public action manifests. Do not edit manually.
 - [console-run](#console-run): Instrument a shell command with duration, exit code and GitHub step summary
 - [console](#console): Resolve central YAML settings, run optional formatting, and collect GitHub job/step notification candidates
 - [create-pr](#create-pr): Create or update a PR using a scoped GitHub App installation token
+- [execute](#execute): Detect package manager, bootstrap runtime and execute shell code
 - [format-report](#format-report): Create or update a single formatted PR summary comment
 - [format](#format): Detect changed or all repository files and format/lint using installed project tools
 - [node-ci](#node-ci): Execute configured Node test and build commands with grouped logs and a job summary
@@ -21,6 +22,7 @@ Generated from public action manifests. Do not edit manually.
 - [run](#run): Execute a GitHub operation with optional automatic App authentication
 - [setup-node-runner](#setup-node-runner): Node 24 TypeScript runner for verifying Node runtime and installing dependencies
 - [setup-node](#setup-node): Setup Node.js with npm cache and optional deterministic install
+- [setup-pnpm](#setup-pnpm): Configure pnpm and Node.js with optional cache and frozen installation
 - [setup-rodlog](#setup-rodlog): Install the published rodlog binary with SHA-256 verification
 - [skip-ci](#skip-ci): Decide whether expensive CI jobs should be skipped while leaving a successful gate
 
@@ -274,6 +276,50 @@ Runtime: `composite`
   with:
     head: "<provide head>"
     title: "<provide title>"
+```
+
+See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
+
+## execute
+
+Detect package manager, bootstrap runtime and execute shell code
+
+Runtime: `composite`
+
+### Inputs
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `working-directory` | No | . | Workspace root |
+| `package-manager` | No | auto | auto, npm, pnpm, yarn, bun or none |
+| `node-version` | No | 24 | Node version or version range |
+| `package-manager-version` | No |  | Override detected manager version |
+| `install` | No | auto | auto, true or false |
+| `install-args` | No |  | Additional install arguments separated by newlines |
+| `cache` | No | true | Enable dependency cache for npm, pnpm and yarn |
+| `language` | No | bash | bash or javascript |
+| `app-id` | No |  | Optional GitHub App ID |
+| `private-key` | No |  | Optional GitHub App private key |
+| `permission-contents` | No | read | App contents permission |
+| `permission-pull-requests` | No |  | App pull requests permission |
+| `permission-actions` | No |  | App actions permission |
+| `permission-issues` | No |  | App issues permission |
+| `token` | No |  | Optional GitHub API token for JavaScript execution |
+| `script` | No |  | Inline Bash script |
+| `file` | No |  | Bash script file relative to workspace |
+
+### Outputs
+
+| Output | Description |
+|---|---|
+| `duration-ms` | Bootstrap and execution duration in milliseconds (excluding runtime setup) |
+| `result` | JSON result of JavaScript execution |
+| `package-manager` | Detected manager |
+
+### Usage template
+
+```yaml
+- uses: rodkisten/github/src/execute@main
 ```
 
 See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
@@ -618,6 +664,35 @@ Runtime: `composite`
 
 ```yaml
 - uses: rodkisten/github/src/setup-node@main
+```
+
+See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.
+
+## setup-pnpm
+
+Configure pnpm and Node.js with optional cache and frozen installation
+
+Runtime: `composite`
+
+### Inputs
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `node-version` | No | 24 | Node.js version |
+| `pnpm-version` | No |  | Explicit pnpm version; omit to use packageManager in package.json |
+| `working-directory` | No | . | Workspace root containing package.json and pnpm-lock.yaml |
+| `install` | No | true | Install dependencies using the frozen lockfile |
+| `cache` | No | true | Enable pnpm store cache |
+| `ignore-scripts` | No | false | Disable dependency lifecycle scripts during installation |
+
+### Outputs
+
+None.
+
+### Usage template
+
+```yaml
+- uses: rodkisten/github/src/setup-pnpm@main
 ```
 
 See [authentication and operation examples](ACTION_AUTH_REFERENCE.md) for credential requirements and complete workflows.

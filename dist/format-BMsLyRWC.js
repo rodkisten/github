@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, extname } from "node:path";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
-import { i as listTrackedFiles, n as gitSync, r as listChangedFiles } from "./git-PImH7G2U.js";
-import { t as summary } from "./summary-BYFxrPwG.js";
-import { n as cmd } from "./cmd-DSJikFMl.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
+import { a as listWorkspaceChanges, i as listTrackedFiles, r as listChangedFiles } from "./git-D7-Jsfse.js";
+import { t as summary } from "./summary-DmC3uIL8.js";
+import { n as cmd } from "./cmd-BHIVgqV-.js";
 // src/format/process.ts
 async function execute(program, args) {
 	const res = await cmd(program, args).nothrow();
@@ -35,16 +35,16 @@ function shellDialect(file) {
 	const ext = extname(file).toLowerCase();
 	if (ext === ".zsh" || ZSH_NAMES.has(name)) return "zsh";
 	if (ext === ".bash" || BASH_NAMES.has(name)) return "bash";
-	if (ext === ".sh") return "posix";
 	try {
 		const firstLine = readFileSync(file, "utf8").split(/\r?\n/, 1)[0] ?? "";
-		if (!firstLine.startsWith("#!")) return void 0;
+		if (!firstLine.startsWith("#!")) return ext === ".sh" ? "posix" : void 0;
 		if (/\bzsh\b/.test(firstLine)) return "zsh";
 		if (/\bbash\b/.test(firstLine)) return "bash";
 		if (/\b(?:sh|dash|ash)\b/.test(firstLine)) return "posix";
 	} catch {
-		return;
+		return ext === ".sh" ? "posix" : void 0;
 	}
+	return ext === ".sh" ? "posix" : void 0;
 }
 async function shellTools(file, mode, lint, runner = execute) {
 	const dialect = shellDialect(file);
@@ -249,12 +249,13 @@ async function runFormatAction() {
 		logger.item("Files found", discovered.length, true);
 		return discovered;
 	});
+	const before = new Map(files.map((path) => [path, readFileSync(path)]));
 	const results = await logger.step(`Format & lint (${files.length} file(s))`, async () => {
 		const res = await logger.spin(`Executing formatters & linters (${mode})`, () => formatFiles(files, mode, inputs.lint));
 		for (const r of res) logger.item(`${r.tool} (${r.language})`, `${r.status} · ${r.files} file(s)`);
 		return res;
 	});
-	const changed = mode === "fix" ? gitSync(["diff", "--name-only"]).split("\n").filter(Boolean) : [];
+	const changed = mode === "fix" ? listWorkspaceChanges().filter((path) => before.has(path) && existsSync(path) && !before.get(path).equals(readFileSync(path))) : [];
 	const failed = results.filter((result) => result.status === "failed");
 	const skipped = results.filter((result) => result.status === "skipped");
 	const suggestedCommit = `style(format): normalize ${changed.length || files.length} files [skip ci]`;

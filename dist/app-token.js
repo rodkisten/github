@@ -1,6 +1,7 @@
 import { r as __toESM, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
-import { a as style, i as logger, n as setOutputs, o as require_core, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
+import { t as require_core } from "./core-CtzvHsHd.js";
 import { createPrivateKey, subtle } from "node:crypto";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
 // node_modules/@octokit/auth-app/node_modules/universal-user-agent/index.js
 var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 function getUserAgent$5() {

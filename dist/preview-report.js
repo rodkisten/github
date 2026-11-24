@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { t as require_github } from "./github-8oLQSBhe.js";
-import { i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
+import { t as require_github } from "./github-W8iOYbtf.js";
+import { i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
 // src/preview-report/render.ts
 var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 const MARKER = "<!-- rod-preview-report:v1 -->";

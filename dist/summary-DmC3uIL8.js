@@ -1,5 +1,5 @@
 import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { o as require_core } from "./inputs-DOIaVO8E.js";
+import { t as require_core } from "./core-CtzvHsHd.js";
 // src/utils/summary.ts
 var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 var SummaryBuilder = class {
