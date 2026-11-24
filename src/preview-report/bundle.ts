@@ -1,11 +1,12 @@
+import { createHash } from 'node:crypto';
 import { gzipSync, brotliCompressSync, constants } from 'node:zlib';
 import type { ReportSection } from './render.js';
 
-export interface BundleSize { raw: number; gzip: number; brotli: number }
+export interface BundleSize { raw: number; gzip: number; brotli: number; sha256?: string }
 export type BundleSnapshot = Record<string, BundleSize>;
 
 export function measure(data: Buffer): BundleSize {
-  return { raw: data.length, gzip: gzipSync(data, { level: 9 }).length,
+  return { sha256: createHash('sha256').update(data).digest('hex'), raw: data.length, gzip: gzipSync(data, { level: 9 }).length,
     brotli: brotliCompressSync(data, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }).length };
 }
 
@@ -15,7 +16,7 @@ export function parseSnapshot(value: unknown): BundleSnapshot {
   if (entries.length > 500) throw new Error('Too many bundle entries');
   for (const [name, size] of entries) {
     if (!name || name.length > 500 || !size || typeof size !== 'object' ||
-      !['raw','gzip','brotli'].every(k => Number.isSafeInteger(size[k]) && size[k] >= 0)) throw new Error('Invalid bundle size: ' + name);
+      !['raw','gzip','brotli'].every(k => Number.isSafeInteger(size[k]) && size[k] >= 0) || (size.sha256 !== undefined && (typeof size.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(size.sha256)))) throw new Error('Invalid bundle size: ' + name);
   }
   return Object.fromEntries(entries);
 }
@@ -57,6 +58,19 @@ export function matchBundles(current: BundleSnapshot, baseline: BundleSnapshot):
   return matches;
 }
 
+// Fingerprints are optional for backward compatibility with existing baselines.
+export function duplicateGroups(snapshot: BundleSnapshot) {
+  const groups = new Map<string,string[]>();
+  for (const [name,size] of Object.entries(snapshot)) {
+    if (!size.sha256) continue;
+    const key = size.sha256 + ':' + size.raw;
+    groups.set(key,[...(groups.get(key) ?? []),name]);
+  }
+  return [...groups.values()].filter(names=>names.length>1).map(names=>({
+    names:names.sort(), bytes:snapshot[names[0]].raw*(names.length-1)
+  })).sort((a,b)=>b.bytes-a.bytes);
+}
+
 export function bundleSections(current: BundleSnapshot, baseline?: BundleSnapshot): ReportSection[] {
   const now = total(current);
   const before = baseline ? total(baseline) : undefined;
@@ -66,6 +80,8 @@ export function bundleSections(current: BundleSnapshot, baseline?: BundleSnapsho
   const category = (name:string) => /\.wasm$/i.test(name) ? 'WASM' : /\.css$/i.test(name) ? 'CSS' : /\.m?js$/i.test(name) ? 'JavaScript' : 'Other';
   const subset = (snapshot:BundleSnapshot, kind:string) => total(Object.fromEntries(Object.entries(snapshot).filter(([name])=>category(name)===kind)));
   const changes = baseline ? Object.entries(current).map(([name,size])=>({name,change:size.raw-(baseline[matches.get(name) ?? '']?.raw ?? 0)})).filter(x=>x.change>0).sort((a,b)=>b.change-a.change) : [];
+  const duplicates = duplicateGroups(current);
+  const coverage = Object.values(current).filter(size=>size.sha256).length;
   return [
     {title:'Bundle totals', rows: keys.map(k => ({label:k, value:kib(now[k]) + (before ? ' · Δ ' + delta(now[k],before[k]) : ''),
       ...(before ? {status: now[k]>before[k] ? 'failure' as const : 'success' as const} : {})}))},
@@ -79,6 +95,8 @@ export function bundleSections(current: BundleSnapshot, baseline?: BundleSnapsho
       const old=baseline?subset(baseline,kind):undefined;
       return {label:kind,value:keys.map(k=>k+': '+kib(size[k])+(old?' (Δ '+delta(size[k],old[k])+')':'')).join(' · ')};
     })},
+    {title:'Content intelligence', rows:[{label:'Fingerprint coverage',value:coverage+' / '+Object.keys(current).length},{label:'Identical content groups',value:coverage?String(duplicates.length):'Not measured'},{label:'Potential duplicate raw bytes',value:coverage?kib(duplicates.reduce((sum,g)=>sum+g.bytes,0)):'Not measured'}]},
+    ...(duplicates.length ? [{title:'Identical files (review before removing)',collapsed:true,rows:duplicates.slice(0,10).map(g=>({label:g.names[0],value:kib(g.bytes)+' potential savings · '+g.names.slice(1,5).join(', ')+(g.names.length>5?' · additional copies omitted':'')}))}] : []),
     ...(baseline ? [{title:'Largest raw increases',collapsed:true,rows:changes.slice(0,10).map(x=>({label:x.name,value:'+'+kib(x.change)}))}] : []),
   ];
 }

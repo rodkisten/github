@@ -1,5 +1,5 @@
 import { describe,it,expect } from 'vitest';
-import { measure,parseSnapshot,bundleSections,matchBundles } from '../src/preview-report/bundle.js';
+import { measure,parseSnapshot,bundleSections,matchBundles,duplicateGroups } from '../src/preview-report/bundle.js';
 describe('bundle metrics',()=>{
   it('measures actual bytes and compression',()=>{
     const size=measure(Buffer.from('hello '.repeat(1000)));
@@ -32,4 +32,16 @@ it('does not guess when multiple hashed chunks share a logical name',()=>{
 it('groups bytes by format',()=>{
   const sections=bundleSections({'a.wasm':{raw:1024,gzip:512,brotli:256}});
   expect(sections.find(s=>s.title==='Bundle composition')?.rows[0]?.value).toContain('raw: 1.00 KiB');
+});
+
+it('detects identical content across directories but not equal-sized different bytes',()=>{
+  const a=measure(Buffer.from('abc'));
+  const b=measure(Buffer.from('xyz'));
+  expect(duplicateGroups({'a.wasm':a,'dir/b.wasm':a,'c.wasm':b})).toEqual([{names:['a.wasm','dir/b.wasm'],bytes:3}]);
+});
+it('accepts legacy snapshots and rejects invalid fingerprints',()=>{
+  const old={raw:3,gzip:23,brotli:7};
+  expect(duplicateGroups(parseSnapshot({a:old,b:old}))).toEqual([]);
+  expect(()=>parseSnapshot({a:{...old,sha256:'invalid'}})).toThrow();
+  expect(parseSnapshot({a:measure(Buffer.from('abc'))}).a.sha256).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
 });
