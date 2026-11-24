@@ -37,3 +37,7 @@ Run `node scripts/measure-bundles.mjs bundle.json dist/app.js dist/style.css` fr
 ## Branding and workflow intelligence
 
 `config/projects.json` is the shared project identity catalog. Generate a banner using `node scripts/render-banner.mjs shell 'Preview ready' banner.svg`. Publish the SVG to a trusted HTTPS location and pass its URL as `banner`. The script does not publish assets. Emoji rendering depends on the SVG renderer's installed fonts. Workflow metrics are a snapshot of the current attempt, not final elapsed time: summed completed job durations may overlap. Running steps are excluded. The App needs Actions read permission; unavailable metrics do not block publication.
+
+### Shared banner assets
+
+Regenerate the committed catalog with `node scripts/generate-banners.mjs`. Consumers can use `https://raw.githubusercontent.com/rodkisten/github/main/assets/banners/shell/preview-ready.svg` as the report banner URL. Replace `shell` and `preview-ready` with a catalog project and event slug. Pin a commit instead of `main` for immutable assets. The raw URL is independent of GitHub Pages configuration.
