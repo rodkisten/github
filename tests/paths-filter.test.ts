@@ -93,8 +93,8 @@ describe('repository path configuration', () => {
 
   it('uses path matching for normal comparisons', () => {
     const filters = selectFilters(source, 'shell');
-    expect(resolveMatchedFilters(['src/main.ts'], filters)).toContain('app');
-    expect(resolveMatchedFilters(['README.md'], filters)).toContain('documentation');
+    expect(resolveMatchedFilters(['src/main.ts'], filters)).toEqual(['validation']);
+    expect(resolveMatchedFilters(['README.md'], filters)).toEqual(['documentation']);
   });
 });
 
@@ -167,14 +167,17 @@ describe('per-filter command matrix', () => {
 
 describe('real shell command configuration', () => {
   const source = readFileSync(new URL('../config/paths.yml', import.meta.url), 'utf8');
-  it('uses verified shell build and lint scripts without running a nonexistent npm test', () => {
+  it('runs one validation matrix entry with verified Shell test, build and lint scripts', () => {
     const filters = selectFilters(source, 'shell');
-    const matrix = buildFilterMatrix(['app'], filters, {
+    const matched = resolveMatchedFilters(['src/main.ts', 'tools/shell-flow/go.mod', 'public/wasm/flow-worker.js', '.github/workflows/check.yml'], filters);
+    expect(matched).toEqual(['validation']);
+    const matrix = buildFilterMatrix(matched, filters, {
       workingDirectory: '.', testCommand: 'npm test', buildCommand: 'npm run build',
       lintCommand: 'npm run lint', runTests: true, runBuild: true, runLint: false,
     });
     expect(matrix[0]).toMatchObject({
-      filter: 'app', 'run-tests': false, 'run-build': true, 'run-lint': true,
+      filter: 'validation', 'run-tests': true, 'run-build': true, 'run-lint': true,
+      'test-command': 'npm run test:explorer',
       'build-command': 'npm run build', 'lint-command': 'npm run lint',
     });
   });
