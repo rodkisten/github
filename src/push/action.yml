@@ -46,4 +46,4 @@ runs:
       run: |
         set -euo pipefail
         git check-ref-format --branch "$TARGET_BRANCH" >/dev/null
-        git -C "$WORK_DIR" -c credential.helper= -c 'credential.helper=!gh auth git-credential' -c http.extraheader= push "$SERVER_URL/$TARGET_REPO.git" "HEAD:refs/heads/$TARGET_BRANCH"
+        git -C "$WORK_DIR" -c credential.helper= -c 'credential.helper=!gh auth git-credential' -c http.extraheader= -c "http.$SERVER_URL/.extraheader=" push "$SERVER_URL/$TARGET_REPO.git" "HEAD:refs/heads/$TARGET_BRANCH"

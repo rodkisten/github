@@ -544,3 +544,23 @@ All examples assume the App is installed on the target repository. Replace crede
 - Missing bundle: run npm ci, npm run build, then node scripts/validate-actions.mjs.
 - Workflow dispatch: the workflow must support workflow_dispatch and exist on the default branch.
 - Push: checkout first; non-fast-forward updates fail intentionally.
+
+## Checkout and push with automatic authentication
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    persist-credentials: false
+- run: |
+    git config user.name "Automation"
+    git config user.email "github-actions[bot]@users.noreply.github.com"
+    git add generated/
+    git commit -m "chore: update generated files"
+- uses: rodkisten/github/src/push@main
+  with:
+    app-id: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
+    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+    branch: main
+```
+
+Push authentication is scoped to the command and clears the checkout HTTP authorization header. It does not change the commit author. Use the commit action for Git Database API commits instead. For multiple operations in a job, mint one token with app-token and pass it explicitly to each operation, granting only the required permissions. Never pass App secrets into untrusted pull request code.
