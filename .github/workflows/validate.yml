@@ -30,6 +30,11 @@ jobs:
         uses: ./src/skip-ci
         with:
           commit-message: 'docs: update readme [skip ci]'
+      - name: Assert skip decision
+        env:
+          SKIP: ${{ steps.skip-smoke.outputs.skip }}
+          REASON: ${{ steps.skip-smoke.outputs.reason }}
+        run: test "$SKIP" = true && test "$REASON" = commit-marker
       - name: 🧪 Smoke-test bundled TypeScript Node CI action
         uses: ./src/node-ci
         with:

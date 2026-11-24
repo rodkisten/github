@@ -8,7 +8,7 @@ export function evaluateSkipCi(
   actor: string,
   skipBots: boolean
 ): SkipCiDecision {
-  if (/\[(skip[[:space:]\s]ci|ci[[:space:]\s]skip)\]/i.test(commitMessage)) {
+  if (/\[(skip\s+ci|ci\s+skip)\]/i.test(commitMessage)) {
     return { skip: true, reason: 'commit-marker' };
   }
 

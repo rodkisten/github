@@ -13,6 +13,14 @@ describe('skip-ci decision rules', () => {
     });
   });
 
+  it.each(['[SKIP CI]', '[ci  skip]', '[skip\tci]'])('recognizes marker %s', (marker) => {
+    expect(evaluateSkipCi(marker, 'rodkisten', false).skip).toBe(true);
+  });
+
+  it.each(['skip ci', '[skip-ci]', '[skip ci later]', 'normal commit'])('does not skip %s', (message) => {
+    expect(evaluateSkipCi(message, 'rodkisten', false).skip).toBe(false);
+  });
+
   it('skips bot actors only when skipBots is true', () => {
     expect(evaluateSkipCi('chore(deps): bump vitest', 'dependabot[bot]', false)).toEqual({
       skip: false,
