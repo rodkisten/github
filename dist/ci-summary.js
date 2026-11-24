@@ -1,27 +1,33 @@
-import { a as __toESM, t as require_core } from "./core-B1pz-eBj.js";
-import { appendFile } from "node:fs/promises";
+import { a as style, i as logger, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
+import { t as summary } from "./summary-Cb6mg204.js";
 // src/ci-summary/index.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
-async function main() {
-	const title = import_core.getInput("title") || "CI report";
-	const status = import_core.getInput("status", { required: true });
-	const details = import_core.getInput("details");
+function sanitizeCell(value) {
+	return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+runAction("CI Report", async () => {
+	if (!process.env.GITHUB_STEP_SUMMARY) throw new Error("GITHUB_STEP_SUMMARY is not set");
+	const inputs = getInputs({
+		title: { default: "CI report" },
+		status: { required: true },
+		details: { default: "" }
+	});
 	const repository = process.env.GITHUB_REPOSITORY || "unknown";
 	const workflow = process.env.GITHUB_WORKFLOW || "unknown";
-	const summary = process.env.GITHUB_STEP_SUMMARY;
-	if (!summary) throw new Error("GITHUB_STEP_SUMMARY is not set");
-	const safe = (value) => value.replaceAll("|", "\\|").replaceAll("\n", " ");
-	const markdown = [
-		`## ${title}`,
-		"",
-		"| Repository | Workflow | Status |",
-		"|---|---|---|",
-		`| ${safe(repository)} | ${safe(workflow)} | ${safe(status)} |`,
-		"",
-		details,
-		""
-	].join("\n");
-	await appendFile(summary, markdown, "utf8");
-}
-main().catch((error) => import_core.setFailed(error instanceof Error ? error.message : String(error)));
+	logger.banner(inputs.title, `${repository} · ${workflow}`);
+	await logger.step("Write CI Job Summary", async () => {
+		logger.item("Repository", repository);
+		logger.item("Workflow", workflow);
+		logger.item("Status", style.bold(inputs.status));
+		logger.item("Has details", Boolean(inputs.details.trim()), true);
+		summary.heading(inputs.title, 2).table([{
+			Repository: sanitizeCell(repository),
+			Workflow: sanitizeCell(workflow),
+			Status: sanitizeCell(inputs.status)
+		}]);
+		if (inputs.details.trim()) summary.text(inputs.details);
+		await summary.write();
+	});
+	logger.success("CI report published to Job Summary");
+	logger.divider("", "═");
+});
 export {};

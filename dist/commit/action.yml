@@ -1,0 +1,77 @@
+name: 📝 Create commit
+description: Atomically commit multiple files through the Git Database API using a GitHub App token
+inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
+  token:
+    description: GitHub App installation token with contents write permission
+    required: false
+  branch:
+    description: Target branch to create or update
+    required: true
+  base:
+    description: Base branch for creating a new target branch
+    required: false
+  message:
+    description: Commit message
+    required: true
+  files:
+    description: JSON array of {path, content, encoding?} file changes
+    required: false
+  files-path:
+    description: Path to JSON array of file changes; preferred for large repositories
+    required: false
+  author-name:
+    description: Commit author and committer name
+    required: false
+    default: Rod GitHub App
+  author-email:
+    description: Commit author and committer email
+    required: false
+    default: github-actions[bot]@users.noreply.github.com
+outputs:
+  sha:
+    description: Created commit SHA
+    value: ${{ steps.operation.outputs.sha }}
+  branch:
+    description: Updated branch
+    value: ${{ steps.operation.outputs.branch }}
+  files:
+    description: Number of files included
+    value: ${{ steps.operation.outputs.files }}
+runs:
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true && "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: write
+    - id: operation
+      uses: rodkisten/github/src/commit/internal@main
+      with:
+        token: ${{ steps.auth.outputs.token || inputs.token }}
+        branch: ${{ inputs.branch }}
+        base: ${{ inputs.base }}
+        message: ${{ inputs.message }}
+        files: ${{ inputs.files }}
+        files-path: ${{ inputs.files-path }}
+        author-name: ${{ inputs.author-name }}
+        author-email: ${{ inputs.author-email }}

@@ -1,0 +1,53 @@
+name: 🤖 GitHub App token
+description: Mint a scoped GitHub App installation token with automatic post-job revocation
+inputs:
+  app-id:
+    description: GitHub App ID
+    required: true
+  private-key:
+    description: GitHub App private key
+    required: true
+  owner:
+    description: Installation owner (omit to scope to current repository)
+    required: false
+    default: ''
+  repositories:
+    description: Optional comma/newline-separated repositories
+    required: false
+  permission-contents:
+    description: Contents permission
+    required: false
+    default: read
+  permission-pull-requests:
+    description: Pull requests permission
+    required: false
+    default: ''
+  permission-issues:
+    description: Issues permission
+    required: false
+    default: ''
+  permission-actions:
+    description: Actions permission
+    required: false
+    default: ''
+outputs:
+  token:
+    description: Short-lived installation token
+    value: ${{ steps.app.outputs.token }}
+  app-slug:
+    description: GitHub App slug name
+    value: ${{ steps.app.outputs.app-slug }}
+runs:
+  using: composite
+  steps:
+    - id: app
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ inputs.owner }}
+        repositories: ${{ inputs.repositories }}
+        permission-contents: ${{ inputs.permission-contents }}
+        permission-pull-requests: ${{ inputs.permission-pull-requests }}
+        permission-issues: ${{ inputs.permission-issues }}
+        permission-actions: ${{ inputs.permission-actions }}

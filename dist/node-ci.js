@@ -1,23 +1,19 @@
-import { a as __toESM, t as require_core } from "./core-B1pz-eBj.js";
 import { resolve } from "node:path";
-import { spawn } from "node:child_process";
+import { a as style, i as logger, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
+import { t as summary } from "./summary-Cb6mg204.js";
+import { n as cmd, t as DEFAULT_SHELL } from "./cmd-Dfr8Spx5.js";
 // src/node-ci/runner.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
-async function execute(command, cwd, shell = process.platform === "win32" ? "cmd.exe" : "/bin/bash", env = process.env) {
-	const started = Date.now();
-	const child = spawn(command, {
+async function execute(command, cwd = process.cwd(), shell = DEFAULT_SHELL, env = process.env) {
+	const { exitCode, durationMs } = await cmd(command, {
 		cwd,
 		shell,
+		env,
 		stdio: "inherit",
-		env
+		rejectOnNonZero: false
 	});
 	return {
-		command,
-		exitCode: await new Promise((done, reject) => {
-			child.once("error", reject);
-			child.once("close", (code, signal) => signal ? reject(/* @__PURE__ */ new Error(`Command terminated by ${signal}`)) : done(code ?? 1));
-		}),
-		durationMs: Date.now() - started
+		exitCode,
+		durationMs
 	};
 }
 // src/node-ci/tasks.ts
@@ -41,29 +37,56 @@ function getTasks(getInput, getBooleanInput) {
 	];
 }
 // src/node-ci/index.ts
-async function main() {
-	const cwd = resolve(import_core.getInput("working-directory") || ".");
-	const scope = import_core.getInput("scope");
+runAction("TypeScript Node CI", async () => {
+	const inputs = getInputs({
+		"working-directory": { default: "." },
+		scope: { default: "" },
+		"test-command": { default: "npm test" },
+		"build-command": { default: "npm run build" },
+		"lint-command": { default: "npm run lint" },
+		"run-tests": {
+			type: "boolean",
+			default: true
+		},
+		"run-build": {
+			type: "boolean",
+			default: true
+		},
+		"run-lint": {
+			type: "boolean",
+			default: false
+		}
+	});
+	const cwd = resolve(inputs["working-directory"]);
+	const scope = inputs.scope;
 	const commandEnv = {
 		...process.env,
 		...scope ? { ROD_CI_FILTER: scope } : {}
 	};
-	const tasks = getTasks(import_core.getInput, import_core.getBooleanInput);
+	logger.banner("TypeScript Node CI", `${scope ? `Filter: ${scope} · ` : ""}${inputs["working-directory"]}`);
+	const tasks = getTasks((name) => String(inputs[name] ?? ""), (name) => Boolean(inputs[name]));
 	const results = [];
 	let failure;
 	const skipped = [];
 	for (const task of tasks) {
 		if (!task.enabled) {
 			skipped.push(task.name);
+			logger.debug(`Skipping disabled task: ${task.name}`);
 			continue;
 		}
 		if (!task.command.trim()) {
 			failure = /* @__PURE__ */ new Error(`Missing ${task.name} command`);
 			break;
 		}
-		import_core.startGroup(`🟦 ${task.name}: ${task.command}`);
 		try {
-			const result = await execute(task.command, cwd, void 0, commandEnv);
+			const result = await logger.step(`${task.name.toUpperCase()}: ${task.command}`, async () => {
+				logger.item("Working directory", cwd);
+				if (scope) logger.item("Filter scope", scope);
+				const execRes = await execute(task.command, cwd, void 0, commandEnv);
+				logger.item("Exit code", execRes.exitCode);
+				logger.item("Duration", `${execRes.durationMs}ms`, true);
+				return execRes;
+			});
 			results.push({
 				name: task.name,
 				...result
@@ -75,29 +98,15 @@ async function main() {
 		} catch (error) {
 			failure = error instanceof Error ? error : new Error(String(error));
 			break;
-		} finally {
-			import_core.endGroup();
 		}
 	}
-	await import_core.summary.addHeading("🟦 Shared Node CI").addTable([[
-		{
-			data: "Task",
-			header: true
-		},
-		{
-			data: "Exit",
-			header: true
-		},
-		{
-			data: "Duration (ms)",
-			header: true
-		}
-	], ...results.map((r) => [
-		r.name,
-		String(r.exitCode),
-		String(r.durationMs)
-	])]).addRaw(`Skipped: ${skipped.join(", ") || "none"}\n\nStatus: **${failure ? "failed" : "passed"}**\n`).write();
+	await summary.publish("🟦 Shared Node CI", [{ table: results.map((r) => ({
+		Task: r.name,
+		Exit: r.exitCode,
+		"Duration (ms)": r.durationMs
+	})) }, { text: `Skipped: ${skipped.join(", ") || "none"}\n\nStatus: **${failure ? "failed" : "passed"}**` }]);
 	if (failure) throw failure;
-}
-main().catch((error) => import_core.setFailed(error instanceof Error ? error.message : String(error)));
+	logger.success(`All enabled CI tasks passed in ${style.bold(inputs["working-directory"])}`);
+	logger.divider("", "═");
+});
 export {};

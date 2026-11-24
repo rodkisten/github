@@ -1,0 +1,105 @@
+name: 🧬 Central paths filter
+description: Match changed GitHub files against centralized repository YAML filters
+inputs:
+  app-id:
+    description: GitHub App ID
+    required: false
+  private-key:
+    description: GitHub App private key
+    required: false
+  token:
+    description: GitHub token with contents read and pull-requests read
+    required: false
+  config-repository:
+    description: Repository containing config/paths.yml
+    required: false
+    default: rodkisten/github
+  config-ref:
+    description: Reviewed configuration ref
+    required: false
+    default: main
+  config-path:
+    description: YAML configuration path
+    required: false
+    default: config/paths.yml
+  base:
+    description: Optional base commit or ref for push comparisons
+    required: false
+    default: ''
+  repository-key:
+    description: Override repository key
+    required: false
+  working-directory:
+    description: Fallback project directory for filters without an override
+    default: '.'
+  test-command:
+    description: Fallback test command
+    default: npm test
+  build-command:
+    description: Fallback build command
+    default: npm run build
+  lint-command:
+    description: Fallback lint command
+    default: npm run lint
+  run-tests:
+    description: Run fallback test command
+    default: 'true'
+  run-build:
+    description: Run fallback build command
+    default: 'true'
+  run-lint:
+    description: Run fallback lint command
+    default: 'false'
+outputs:
+  changes:
+    description: JSON array of matching filter names
+    value: ${{ steps.operation.outputs.changes }}
+  any:
+    description: Whether any filter matched
+    value: ${{ steps.operation.outputs.any }}
+  files:
+    description: JSON array of changed paths
+    value: ${{ steps.operation.outputs.files }}
+  full-run:
+    description: Whether all filters were selected as a safe initial-push fallback
+    value: ${{ steps.operation.outputs.full-run }}
+  matrix:
+    description: JSON array of filter-specific CI task configurations
+    value: ${{ steps.operation.outputs.matrix }}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true && "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: read
+        permission-pull-requests: read
+    - id: operation
+      uses: rodkisten/github/src/paths-filter/internal@main
+      with:
+        token: ${{ steps.auth.outputs.token || inputs.token }}
+        config-repository: ${{ inputs.config-repository }}
+        config-ref: ${{ inputs.config-ref }}
+        config-path: ${{ inputs.config-path }}
+        base: ${{ inputs.base }}
+        repository-key: ${{ inputs.repository-key }}
+        working-directory: ${{ inputs.working-directory }}
+        test-command: ${{ inputs.test-command }}
+        build-command: ${{ inputs.build-command }}
+        lint-command: ${{ inputs.lint-command }}
+        run-tests: ${{ inputs.run-tests }}
+        run-build: ${{ inputs.run-build }}
+        run-lint: ${{ inputs.run-lint }}

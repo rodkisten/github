@@ -1,7 +1,9 @@
-import { a as __toESM, i as __require, r as __commonJSMin, t as require_core } from "./core-B1pz-eBj.js";
-import { t as require_github } from "./github-BIEQjGK6.js";
-import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, readlinkSync } from "node:fs";
+import { n as __require, r as __toESM, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
+import { t as require_github } from "./github-BEwrU_l9.js";
+import { t as createOrUpdatePullRequest } from "./operation-CF8cuzAc.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
+import { a as listWorkspaceChanges, o as validateBranchName, t as commitViaGitDatabase } from "./git-Cp_vTGsB.js";
+import { t as summary } from "./summary-Cb6mg204.js";
 // node_modules/handlebars/dist/cjs/handlebars/utils.js
 var require_utils = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.__esModule = true;
@@ -7362,7 +7364,6 @@ var require_lib = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	}
 }));
 // src/publish/index.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 var import_lib = /* @__PURE__ */ __toESM(require_lib(), 1);
 function registerHelpers() {
@@ -7387,113 +7388,80 @@ function render(template, context, label) {
 		throw new Error(`Cannot render ${label}: ${error instanceof Error ? error.message : String(error)}`);
 	}
 }
-function git(args) {
-	return execFileSync("git", args, { encoding: "utf8" }).trim();
-}
-function changedPaths(baseRef) {
-	const tracked = git([
-		"diff",
-		"--name-only",
-		"-z",
-		baseRef,
-		"--"
-	]).split("\0").filter(Boolean);
-	const untracked = git([
-		"ls-files",
-		"--others",
-		"--exclude-standard",
-		"-z"
-	]).split("\0").filter(Boolean);
-	return [.../* @__PURE__ */ new Set([...tracked, ...untracked])].sort();
-}
-async function createTree(octokit, owner, repo, baseTree, paths) {
-	const tree = [];
-	for (const path of paths) {
-		if (!existsSync(path)) {
-			tree.push({
-				path,
-				mode: "100644",
-				type: "blob",
-				sha: null
-			});
-			continue;
-		}
-		const stat = lstatSync(path);
-		if (stat.isDirectory()) continue;
-		const mode = stat.isSymbolicLink() ? "120000" : (stat.mode & 73) !== 0 ? "100755" : "100644";
-		const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(path)) : readFileSync(path);
-		const blob = await octokit.rest.git.createBlob({
-			owner,
-			repo,
-			content: bytes.toString("base64"),
-			encoding: "base64"
-		});
-		tree.push({
-			path,
-			mode,
-			type: "blob",
-			sha: blob.data.sha
-		});
-	}
-	return (await octokit.rest.git.createTree({
-		owner,
-		repo,
-		base_tree: baseTree,
-		tree
-	})).data.sha;
-}
-async function getBranch(octokit, owner, repo, branch) {
-	try {
-		return (await octokit.rest.git.getRef({
-			owner,
-			repo,
-			ref: `heads/${branch}`
-		})).data.object.sha;
-	} catch (error) {
-		if (error.status === 404) return void 0;
-		throw error;
-	}
-}
-async function publish() {
+runAction("Publish Git Changes", async () => {
 	registerHelpers();
-	const token = import_core.getInput("token", { required: true });
-	const mode = import_core.getInput("mode", { required: true });
-	if (mode !== "commit" && mode !== "pull-request") throw new Error("mode must be commit or pull-request");
 	const context = import_github.context;
-	const [owner, repo] = context.repo.owner && context.repo.repo ? [context.repo.owner, context.repo.repo] : ["", ""];
+	const { owner, repo } = context.repo;
 	if (!owner || !repo) throw new Error("Cannot resolve repository from GitHub context");
+	logger.banner("Publish Git Changes", `${owner}/${repo}`);
 	const payload = context.payload;
-	const baseBranch = import_core.getInput("base-branch") || payload.repository?.default_branch || "main";
-	const requestedBranch = import_core.getInput("branch");
-	const branch = mode === "commit" ? requestedBranch || context.ref.replace(/^refs\/heads\//, "") : requestedBranch || `automation/${context.workflow.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-	if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.startsWith("/") || branch.endsWith("/") || branch.includes("..")) throw new Error(`Invalid branch name: ${branch}`);
-	let custom = {};
-	const rawData = import_core.getInput("template-data");
-	if (rawData) {
-		try {
-			custom = JSON.parse(rawData);
-		} catch {
-			throw new Error("template-data must be a valid JSON object");
-		}
-		if (!custom || Array.isArray(custom) || typeof custom !== "object") throw new Error("template-data must be a JSON object");
-	}
-	const octokit = import_github.getOctokit(token);
-	const baseRef = (mode === "pull-request" ? await getBranch(octokit, owner, repo, branch) : void 0) || await getBranch(octokit, owner, repo, mode === "commit" ? branch : baseBranch);
-	if (!baseRef) throw new Error(`Cannot find base branch: ${mode === "commit" ? branch : baseBranch}`);
-	const baseCommit = await octokit.rest.git.getCommit({
-		owner,
-		repo,
-		commit_sha: baseRef
+	const inputs = await logger.step("Validate publish configuration", () => {
+		const parsed = getInputs({
+			token: {
+				required: true,
+				secret: true
+			},
+			mode: {
+				required: true,
+				parse: (raw) => {
+					if (raw !== "commit" && raw !== "pull-request") throw new Error("mode must be commit or pull-request");
+					return raw;
+				}
+			},
+			branch: { default: "" },
+			"base-branch": { default: payload.repository?.default_branch || "main" },
+			"commit-message": { default: "" },
+			"commit-message-template": { default: "" },
+			"pr-title": { default: "" },
+			"pr-title-template": { default: "" },
+			"pr-body": { default: "" },
+			"pr-body-template": { default: "" },
+			"template-data": {
+				default: {},
+				parse: (raw) => {
+					if (!raw) return {};
+					let custom;
+					try {
+						custom = JSON.parse(raw);
+					} catch {
+						throw new Error("template-data must be a valid JSON object");
+					}
+					if (!custom || Array.isArray(custom) || typeof custom !== "object") throw new Error("template-data must be a JSON object");
+					return custom;
+				}
+			},
+			labels: { type: "list" },
+			draft: {
+				type: "boolean",
+				default: false
+			},
+			"author-name": { default: context.actor || "Rod GitHub App" },
+			"author-email": { default: `${context.actor || "github-actions[bot]"}@users.noreply.github.com` }
+		});
+		const targetBranch = parsed.mode === "commit" ? parsed.branch || context.ref.replace(/^refs\/heads\//, "") : parsed.branch || `automation/${context.workflow.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+		validateBranchName(targetBranch);
+		validateBranchName(parsed["base-branch"]);
+		logger.item("Mode", parsed.mode);
+		logger.item("Target branch", targetBranch);
+		logger.item("Base branch", parsed["base-branch"], true);
+		return {
+			...parsed,
+			targetBranch
+		};
 	});
-	const paths = changedPaths("HEAD");
-	if (paths.length === 0) throw new Error("There are no changed or untracked files to publish");
+	const paths = await logger.step("Inspect workspace changes", () => {
+		const changed = listWorkspaceChanges("HEAD");
+		if (changed.length === 0) throw new Error("There are no changed or untracked files to publish");
+		logger.item("Changed/untracked files", changed.length, true);
+		return changed;
+	});
 	const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
 	const templateContext = {
 		repository: `${owner}/${repo}`,
 		owner,
 		repo,
-		branch,
-		baseBranch,
+		branch: inputs.targetBranch,
+		baseBranch: inputs["base-branch"],
 		sha: context.sha,
 		shortSha: context.sha.slice(0, 7),
 		actor: context.actor,
@@ -7509,52 +7477,43 @@ async function publish() {
 		files: paths,
 		fileCount: paths.length,
 		inputs: payload.inputs ?? {},
-		...custom
+		...inputs["template-data"]
 	};
-	const message = render(import_core.getInput("commit-message-template") || import_core.getInput("commit-message") || "chore: automated update", templateContext, "commit message");
-	if (!message) throw new Error("Rendered commit message cannot be empty");
-	const tree = await createTree(octokit, owner, repo, baseCommit.data.tree.sha, paths);
-	const authorName = import_core.getInput("author-name") || `${context.actor}`;
-	const authorEmail = import_core.getInput("author-email") || `${context.actor}@users.noreply.github.com`;
-	const commit = await octokit.rest.git.createCommit({
+	const commitMessage = render(inputs["commit-message-template"] || inputs["commit-message"] || "chore: automated update", templateContext, "commit message");
+	if (!commitMessage) throw new Error("Rendered commit message cannot be empty");
+	const octokit = import_github.getOctokit(inputs.token);
+	const commitResult = await logger.step(`Commit ${paths.length} file(s) to ${inputs.targetBranch}`, () => commitViaGitDatabase(octokit, {
 		owner,
 		repo,
-		message,
-		tree,
-		parents: [baseRef],
-		author: {
-			name: authorName,
-			email: authorEmail
-		},
-		committer: {
-			name: authorName,
-			email: authorEmail
-		}
+		branch: inputs.targetBranch,
+		base: inputs["base-branch"],
+		message: commitMessage,
+		authorName: inputs["author-name"],
+		authorEmail: inputs["author-email"],
+		workspacePaths: paths,
+		createBranchIfMissing: inputs.mode === "pull-request"
+	}));
+	setOutputs({
+		"commit-sha": commitResult.sha,
+		branch: inputs.targetBranch,
+		files: paths.join("\n")
 	});
-	if (await getBranch(octokit, owner, repo, branch)) await octokit.rest.git.updateRef({
-		owner,
-		repo,
-		ref: `heads/${branch}`,
-		sha: commit.data.sha,
-		force: false
-	});
-	else await octokit.rest.git.createRef({
-		owner,
-		repo,
-		ref: `refs/heads/${branch}`,
-		sha: commit.data.sha
-	});
-	import_core.setOutput("commit-sha", commit.data.sha);
-	import_core.setOutput("branch", branch);
-	import_core.setOutput("files", paths.join("\n"));
-	if (mode === "commit") {
-		import_core.setOutput("pr-number", "");
-		import_core.setOutput("pr-url", "");
-		import_core.info(`Published ${paths.length} file(s) to ${owner}/${repo}@${branch}`);
+	if (inputs.mode === "commit") {
+		setOutputs({
+			"pr-number": "",
+			"pr-url": ""
+		});
+		await summary.publish("📤 Published direct commit", [{ table: [{
+			Branch: inputs.targetBranch,
+			Commit: commitResult.sha.slice(0, 7),
+			Files: paths.length
+		}] }]);
+		logger.success(`Published ${paths.length} file(s) to ${style.bold(`${owner}/${repo}@${inputs.targetBranch}`)}`);
+		logger.divider("", "═");
 		return;
 	}
-	const titleTemplate = import_core.getInput("pr-title-template") || import_core.getInput("pr-title") || "chore: automated update";
-	const bodyTemplate = import_core.getInput("pr-body-template") || import_core.getInput("pr-body") || [
+	const titleTemplate = inputs["pr-title-template"] || inputs["pr-title"] || "chore: automated update";
+	const bodyTemplate = inputs["pr-body-template"] || inputs["pr-body"] || [
 		"## Summary",
 		"",
 		"Automated changes published by **{{workflow}}**.",
@@ -7568,46 +7527,32 @@ async function publish() {
 		"{{#each files}}- `{{this}}`",
 		"{{/each}}"
 	].join("\n");
-	const title = render(titleTemplate, templateContext, "pull request title");
-	const body = render(bodyTemplate, templateContext, "pull request body");
-	if (!title) throw new Error("Rendered pull request title cannot be empty");
-	const head = `${owner}:${branch}`;
-	const open = await octokit.rest.pulls.list({
+	const prTitle = render(titleTemplate, templateContext, "pull request title");
+	const prBody = render(bodyTemplate, templateContext, "pull request body");
+	if (!prTitle) throw new Error("Rendered pull request title cannot be empty");
+	const pr = await createOrUpdatePullRequest(octokit, {
 		owner,
 		repo,
-		state: "open",
-		head,
-		base: baseBranch
+		head: inputs.targetBranch,
+		base: inputs["base-branch"],
+		title: prTitle,
+		body: prBody,
+		draft: inputs.draft,
+		updateExisting: true,
+		labels: inputs.labels,
+		reviewers: []
 	});
-	let pull;
-	if (open.data.length) pull = (await octokit.rest.pulls.update({
-		owner,
-		repo,
-		pull_number: open.data[0].number,
-		title,
-		body
-	})).data;
-	else pull = (await octokit.rest.pulls.create({
-		owner,
-		repo,
-		head: branch,
-		base: baseBranch,
-		title,
-		body,
-		draft: import_core.getBooleanInput("draft")
-	})).data;
-	const labels = import_core.getInput("labels").split(",").map((label) => label.trim()).filter(Boolean);
-	if (labels.length) await octokit.rest.issues.addLabels({
-		owner,
-		repo,
-		issue_number: pull.number,
-		labels
+	setOutputs({
+		"pr-number": pr.number,
+		"pr-url": pr.url
 	});
-	import_core.setOutput("pr-number", String(pull.number));
-	import_core.setOutput("pr-url", pull.html_url);
-	import_core.info(`Pull request #${pull.number}: ${pull.html_url}`);
-}
-publish().catch((error) => {
-	import_core.setFailed(error instanceof Error ? error.message : String(error));
+	await summary.publish("📤 Published pull request", [{ table: [{
+		PR: `[#${pr.number}](${pr.url})`,
+		Branch: inputs.targetBranch,
+		Commit: commitResult.sha.slice(0, 7),
+		Files: paths.length
+	}] }]);
+	logger.success(`Pull request #${pr.number} ready: ${style.bold(pr.url)}`);
+	logger.divider("", "═");
 });
 export {};

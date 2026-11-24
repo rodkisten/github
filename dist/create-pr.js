@@ -1,11 +1,10 @@
-import { a as __toESM, t as require_core } from "./core-B1pz-eBj.js";
-import { t as require_github } from "./github-BIEQjGK6.js";
+import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
+import { t as require_github } from "./github-BEwrU_l9.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-BuTruFqa.js";
+import { t as summary } from "./summary-Cb6mg204.js";
+import { t as createOrUpdatePullRequest } from "./operation-CF8cuzAc.js";
 // src/create-pr/helpers.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
-function parseList(value) {
-	return value.split(/[\r\n,]/).map((item) => item.trim()).filter(Boolean);
-}
 function appendConversationUrl(body, url) {
 	if (!url || body.includes(url)) return body;
 	return [
@@ -14,110 +13,64 @@ function appendConversationUrl(body, url) {
 		url
 	].filter(Boolean).join(String.fromCharCode(10, 10));
 }
-// src/create-pr/operation.ts
-async function createOrUpdatePullRequest(octokit, options) {
-	const { owner, repo, head, base, title, body, draft, updateExisting, labels, reviewers } = options;
-	const existing = await octokit.paginate(octokit.rest.pulls.list, {
-		owner,
-		repo,
-		state: "open",
-		head: `${owner}:${head}`,
-		base,
-		per_page: 100
-	});
-	let number;
-	let url;
-	let created = false;
-	if (existing[0]) {
-		if (!updateExisting) throw new Error(`PR #${existing[0].number} already exists for ${head} → ${base}`);
-		const response = await octokit.rest.pulls.update({
-			owner,
-			repo,
-			pull_number: existing[0].number,
-			title,
-			body
-		});
-		number = response.data.number;
-		url = response.data.html_url;
-	} else {
-		const response = await octokit.rest.pulls.create({
-			owner,
-			repo,
-			head,
-			base,
-			title,
-			body,
-			draft
-		});
-		number = response.data.number;
-		url = response.data.html_url;
-		created = true;
-	}
-	if (labels.length) await octokit.rest.issues.addLabels({
-		owner,
-		repo,
-		issue_number: number,
-		labels
-	});
-	if (reviewers.length) await octokit.rest.pulls.requestReviewers({
-		owner,
-		repo,
-		pull_number: number,
-		reviewers
-	});
-	return {
-		number,
-		url,
-		created,
-		updated: !created
-	};
-}
 // src/create-pr/index.ts
-async function main() {
-	const token = import_core.getInput("token", { required: true });
-	import_core.setSecret(token);
-	const octokit = import_github.getOctokit(token);
+runAction("Create or Update PR", async () => {
 	const { owner, repo } = import_github.context.repo;
-	const head = import_core.getInput("head", { required: true });
-	const base = import_core.getInput("base") || import_github.context.payload.repository?.default_branch || "main";
-	const title = import_core.getInput("title", { required: true });
-	const draft = import_core.getBooleanInput("draft");
-	const updateExisting = import_core.getBooleanInput("update-existing");
-	const conversationUrl = import_core.getInput("conversation-url");
+	logger.banner("Create or Update PR", `${owner}/${repo}`);
+	const inputs = await logger.step("Validate PR inputs", () => {
+		const parsed = getInputs({
+			token: {
+				required: true,
+				secret: true
+			},
+			head: { required: true },
+			base: { default: import_github.context.payload.repository?.default_branch || "main" },
+			title: { required: true },
+			body: { default: "" },
+			draft: {
+				type: "boolean",
+				default: false
+			},
+			"update-existing": {
+				type: "boolean",
+				default: true
+			},
+			"conversation-url": { default: "" },
+			labels: { type: "list" },
+			reviewers: { type: "list" }
+		});
+		logger.item("Head", parsed.head);
+		logger.item("Base", parsed.base);
+		logger.item("Draft", parsed.draft);
+		logger.item("Update existing", parsed["update-existing"], true);
+		return parsed;
+	});
+	const octokit = import_github.getOctokit(inputs.token);
 	const result = await createOrUpdatePullRequest(octokit, {
 		owner,
 		repo,
-		head,
-		base,
-		title,
-		body: appendConversationUrl(import_core.getInput("body"), conversationUrl),
-		draft,
-		updateExisting,
-		labels: parseList(import_core.getInput("labels")),
-		reviewers: parseList(import_core.getInput("reviewers"))
+		head: inputs.head,
+		base: inputs.base,
+		title: inputs.title,
+		body: appendConversationUrl(inputs.body, inputs["conversation-url"]),
+		draft: inputs.draft,
+		updateExisting: inputs["update-existing"],
+		labels: inputs.labels,
+		reviewers: inputs.reviewers
 	});
-	import_core.setOutput("number", String(result.number));
-	import_core.setOutput("url", result.url);
-	import_core.setOutput("created", String(result.created));
-	import_core.setOutput("updated", String(result.updated));
-	await import_core.summary.addHeading("🤖 Pull request ready").addTable([[
-		{
-			data: "PR",
-			header: true
-		},
-		{
-			data: "Base",
-			header: true
-		},
-		{
-			data: "Result",
-			header: true
-		}
-	], [
-		`[#${result.number}](${result.url})`,
-		base,
-		result.created ? "Created" : "Updated"
-	]]).write();
-}
-main().catch((error) => import_core.setFailed(error instanceof Error ? error.message : String(error)));
+	logger.divider("Outputs & Summary");
+	setOutputs({
+		number: result.number,
+		url: result.url,
+		created: result.created,
+		updated: result.updated
+	});
+	await summary.publish("🤖 Pull request ready", [{ table: [{
+		PR: `[#${result.number}](${result.url})`,
+		Base: inputs.base,
+		Result: result.created ? "Created" : "Updated"
+	}] }]);
+	logger.success(`Pull request #${result.number} ${result.created ? "created" : "updated"}: ${style.bold(result.url)}`);
+	logger.divider("", "═");
+});
 export {};

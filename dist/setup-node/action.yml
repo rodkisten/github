@@ -1,0 +1,44 @@
+name: 🟩 Setup Node workspace
+description: Setup Node.js with npm cache and optional deterministic install
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: '24'
+  working-directory:
+    description: Project directory
+    required: false
+    default: '.'
+  install:
+    description: Run npm ci / npm install
+    required: false
+    default: 'true'
+  cache:
+    description: Enable npm dependency cache
+    required: false
+    default: 'true'
+outputs:
+  node-version:
+    description: Installed Node.js version
+    value: ${{ steps.runtime.outputs.node-version }}
+runs:
+  using: composite
+  steps:
+    - name: 🟩 Cache & Node.js runtime
+      id: runtime
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+    - name: 📦 Bootstrap Node workspace
+      if: inputs.install == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [[ -f package-lock.json ]]; then
+          npm ci
+        else
+          npm install --no-audit --no-fund
+        fi

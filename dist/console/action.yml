@@ -1,0 +1,98 @@
+name: 🧩 Rod Actions Console
+description: Resolve central YAML settings, run optional formatting, and collect GitHub job/step notification candidates
+inputs:
+  app-id:
+    description: GitHub App ID for automatic authentication
+    required: false
+  private-key:
+    description: GitHub App private key for automatic authentication
+    required: false
+  defaults:
+    description: Path to the central rod-actions.yml (checkout rodkisten/github first)
+    required: true
+  config:
+    description: Optional repository override path
+    required: false
+    default: .github/rod-actions.yml
+  format-mode:
+    description: off, check or fix
+    default: 'off'
+  format-scope:
+    description: changed or all
+    default: changed
+  format-base:
+    description: Base ref for changed mode
+    default: origin/main
+  format-lint:
+    description: Run linters during format phase
+    default: 'true'
+  commit-files-path:
+    description: Write JSON commit payload to this local path when format-mode is fix
+    required: false
+  results-file:
+    description: Write JSON format results to this local path
+    required: false
+  report:
+    description: Fetch workflow job and step conclusions
+    required: false
+    default: 'false'
+  github-token:
+    description: Read-only token with actions read permission for report mode
+    required: false
+  events-file:
+    description: Optional JSON output path for selected events
+    required: false
+outputs:
+  notify-enabled:
+    description: Whether notification dispatch is enabled in resolved configuration
+    value: ${{ steps.operation.outputs.notify-enabled }}
+  release-mode:
+    description: Configured release mode
+    value: ${{ steps.operation.outputs.release-mode }}
+  event-count:
+    description: Number of notification candidates
+    value: ${{ steps.operation.outputs.event-count }}
+  format-changed-files:
+    description: JSON array of files modified by the formatter
+    value: ${{ steps.operation.outputs.format-changed-files }}
+  format-results:
+    description: JSON array of formatter/linter tool results
+    value: ${{ steps.operation.outputs.format-results }}
+  suggested-commit:
+    description: Suggested conventional commit message for formatted changes
+    value: ${{ steps.operation.outputs.suggested-commit }}
+runs:
+  using: composite
+  steps:
+    - name: Validate authentication inputs
+      shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" ]]; then
+          echo "::error::Provide both app-id and private-key"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: read
+        permission-actions: read
+    - id: operation
+      uses: rodkisten/github/src/console/internal@main
+      with:
+        defaults: ${{ inputs.defaults }}
+        config: ${{ inputs.config }}
+        format-mode: ${{ inputs.format-mode }}
+        format-scope: ${{ inputs.format-scope }}
+        format-base: ${{ inputs.format-base }}
+        format-lint: ${{ inputs.format-lint }}
+        commit-files-path: ${{ inputs.commit-files-path }}
+        results-file: ${{ inputs.results-file }}
+        report: ${{ inputs.report }}
+        github-token: ${{ steps.auth.outputs.token || inputs.github-token }}
+        events-file: ${{ inputs.events-file }}
