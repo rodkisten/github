@@ -1,5 +1,8 @@
 import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import { t as require_github } from "./github-8oLQSBhe.js";
 import { i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-DOIaVO8E.js";
 // src/preview-report/render.ts
@@ -295,6 +298,23 @@ function bundleSections(current, baseline) {
 		}] : []
 	];
 }
+function historicalSection(current, previous, runId) {
+	const now = total(current), before = total(previous);
+	return {
+		title: "Since last successful build",
+		rows: [{
+			label: "Reference run",
+			value: String(runId)
+		}, ...[
+			"raw",
+			"gzip",
+			"brotli"
+		].map((k) => ({
+			label: k,
+			value: kib(now[k]) + " · Δ " + delta(now[k], before[k])
+		}))]
+	};
+}
 // src/preview-report/git.ts
 function gitSections(commits, files, totals) {
 	const directories = /* @__PURE__ */ new Map();
@@ -372,6 +392,7 @@ runAction("Rod Preview Report", async () => {
 		"results-file": { required: true },
 		"bundle-file": { default: "" },
 		"baseline-file": { default: "" },
+		"history-artifact": { default: "" },
 		"bot-login": { default: "github-actions[bot]" }
 	});
 	const report = parseReport(JSON.parse(readFileSync(inputs["results-file"], "utf8")));
@@ -410,6 +431,67 @@ runAction("Rod Preview Report", async () => {
 		const current = parseSnapshot(JSON.parse(readFileSync(inputs["bundle-file"], "utf8")));
 		const baseline = inputs["baseline-file"] ? parseSnapshot(JSON.parse(readFileSync(inputs["baseline-file"], "utf8"))) : void 0;
 		sections.push(...bundleSections(current, baseline));
+		if (inputs["history-artifact"]) {
+			let directory;
+			try {
+				const run = await api.rest.actions.getWorkflowRun({
+					owner,
+					repo,
+					run_id: import_github.context.runId
+				});
+				const reference = (await api.rest.actions.listWorkflowRuns({
+					owner,
+					repo,
+					workflow_id: run.data.workflow_id,
+					event: "pull_request",
+					status: "success",
+					branch: pr.data.head.ref,
+					per_page: 100
+				})).data.workflow_runs.filter((r) => r.id !== run.data.id && r.run_number < run.data.run_number && r.head_repository?.id === pr.data.head.repo?.id && r.pull_requests?.some((p) => p.number === pull_number)).sort((a, b) => b.run_number - a.run_number)[0];
+				if (!reference) throw new Error("No earlier successful run associated with this PR");
+				if (!(await api.rest.actions.listWorkflowRunArtifacts({
+					owner,
+					repo,
+					run_id: reference.id,
+					name: inputs["history-artifact"],
+					per_page: 100
+				})).data.artifacts.some((a) => !a.expired && a.name === inputs["history-artifact"])) throw new Error("Previous snapshot unavailable");
+				directory = mkdtempSync(join(tmpdir(), "rod-bundle-history-"));
+				execFileSync("gh", [
+					"run",
+					"download",
+					String(reference.id),
+					"-R",
+					owner + "/" + repo,
+					"-n",
+					inputs["history-artifact"],
+					"-D",
+					directory
+				], {
+					env: {
+						...process.env,
+						GH_TOKEN: inputs["github-token"]
+					},
+					timeout: 3e4,
+					stdio: "pipe"
+				});
+				const prior = parseSnapshot(JSON.parse(readFileSync(join(directory, basename(inputs["bundle-file"])), "utf8")));
+				sections.push(historicalSection(current, prior, reference.id));
+			} catch {
+				sections.push({
+					title: "Since last successful build",
+					rows: [{
+						label: "Reference",
+						value: "Unavailable (no matching accessible snapshot)"
+					}]
+				});
+			} finally {
+				if (directory) rmSync(directory, {
+					recursive: true,
+					force: true
+				});
+			}
+		}
 	}
 	try {
 		const run_id = import_github.context.runId;

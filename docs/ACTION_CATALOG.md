@@ -438,6 +438,7 @@ Runtime: `composite`
 | `pr-number` | Yes |  | Pull request number |
 | `bundle-file` | No |  | Optional measured bundle snapshot JSON |
 | `baseline-file` | No |  | Optional baseline snapshot JSON measured with identical settings |
+| `history-artifact` | No |  | Optional artifact name containing the previous successful PR snapshot with the same JSON filename |
 | `results-file` | Yes |  | JSON preview report metadata |
 
 ### Outputs
