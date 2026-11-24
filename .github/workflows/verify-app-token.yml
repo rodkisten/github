@@ -29,7 +29,7 @@ jobs:
           echo '🔐 Both secrets are accessible (values hidden).' >> "$GITHUB_STEP_SUMMARY"
       - name: 🤖 Create read-only installation token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: rodkisten/github/src/app-token@main
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}

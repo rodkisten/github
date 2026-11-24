@@ -60,7 +60,7 @@ jobs:
     steps:
       - name: 🤖 GitHub App installation token
         id: app
-        uses: actions/create-github-app-token@v2
+        uses: rodkisten/github/src/app-token@main
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}

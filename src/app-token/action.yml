@@ -8,9 +8,9 @@ inputs:
     description: GitHub App private key
     required: true
   owner:
-    description: Installation owner (defaults to current owner)
+    description: Installation owner (omit to scope to current repository)
     required: false
-    default: ${{ github.repository_owner }}
+    default: ''
   repositories:
     description: Optional comma/newline-separated repositories
     required: false
@@ -21,7 +21,7 @@ inputs:
   permission-pull-requests:
     description: Pull requests permission
     required: false
-    default: read
+    default: ''
   permission-issues:
     description: Issues permission
     required: false
