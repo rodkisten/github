@@ -14,7 +14,7 @@ export interface GitCommit {
 
 export function gitSections(commits: GitCommit[], files: GitFile[], totals: {
   commits: number; files: number; additions: number; deletions: number;
-}): ReportSection[] {
+}, repository?: string): ReportSection[] {
   const directories = new Map<string, number>();
   for (const file of files) {
     const directory = file.filename.includes('/') ? file.filename.split('/')[0] : '(root)';
@@ -28,7 +28,7 @@ export function gitSections(commits: GitCommit[], files: GitFile[], totals: {
       { label: 'File coverage', value: files.length + ' of ' + totals.files },
     ] },
     { title: 'Commits (up to 20)', collapsed: true, rows: commits.slice(-20).map(c => ({
-      label: c.sha.slice(0, 7), value: (c.commit.message.split('\n')[0] + ' · ' + (c.commit.author?.name ?? 'Unknown')).slice(0, 500),
+      label: c.sha.slice(0, 7), ...(repository && /^[a-f0-9]{40}$/.test(c.sha) ? {url:'https://github.com/'+repository+'/commit/'+c.sha} : {}), value: (c.commit.message.split('\n')[0] + ' · ' + (c.commit.author?.name ?? 'Unknown')).slice(0, 500),
     })) },
     { title: 'Changed files (up to 40)', collapsed: true, rows: files.slice(0, 40).map(f => ({
       label: f.status, value: ((f.previous_filename ? f.previous_filename + ' → ' : '') + f.filename + ' (+' + f.additions + ' / -' + f.deletions + ')').slice(0, 500),

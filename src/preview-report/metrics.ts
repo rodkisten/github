@@ -9,7 +9,7 @@ function seconds(start?: string|null,end?: string|null): number | undefined {
   const n=(Date.parse(end)-Date.parse(start))/1000;
   return Number.isFinite(n)&&n>=0?n:undefined;
 }
-export function workflowSections(jobs: TimedJob[], artifacts: {name:string;size_in_bytes:number;expired:boolean}[]): ReportSection[] {
+export function workflowSections(jobs: TimedJob[], artifacts: {name:string;size_in_bytes:number;expired:boolean;id?:number}[], repository?:string, runId?:number): ReportSection[] {
   const completed=jobs.flatMap(j=>{const duration=seconds(j.started_at,j.completed_at);return duration===undefined?[]:[{name:j.name,duration}];});
   const steps=jobs.flatMap(j=>(j.steps??[]).flatMap(s=>{const duration=seconds(s.started_at,s.completed_at);return duration===undefined?[]:[{name:j.name+' / '+s.name,duration}];})).sort((a,b)=>b.duration-a.duration);
   const sum=completed.reduce((a,b)=>a+b.duration,0);
@@ -24,6 +24,6 @@ export function workflowSections(jobs: TimedJob[], artifacts: {name:string;size_
       {label:'Available artifacts',value:String(live.length)},
     ]},
     {title:'Slowest steps',collapsed:true,rows:steps.slice(0,10).map(s=>({label:s.name.slice(0,300),value:s.duration.toFixed(1)+' s'}))},
-    {title:'Artifacts',collapsed:true,rows:live.slice(0,20).map(a=>({label:a.name,value:(a.size_in_bytes/1024).toFixed(2)+' KiB'}))},
+    {title:'Artifacts',collapsed:true,rows:live.slice(0,20).map(a=>({label:a.name,...(repository && runId && a.id ? {url:'https://github.com/'+repository+'/actions/runs/'+runId+'/artifacts/'+a.id}:{}),value:(a.size_in_bytes/1024).toFixed(2)+' KiB'}))},
   ];
 }

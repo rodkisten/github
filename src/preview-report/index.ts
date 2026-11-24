@@ -46,7 +46,7 @@ runAction('Rod Preview Report', async () => {
   const sections = gitSections(commits, files, {
     commits: pr.data.commits, files: pr.data.changed_files,
     additions: pr.data.additions, deletions: pr.data.deletions,
-  });
+  }, owner+'/'+repo);
   if (inputs['bundle-file']) {
     const current = parseSnapshot(JSON.parse(readFileSync(inputs['bundle-file'], 'utf8')));
     const baseline = inputs['baseline-file'] ? parseSnapshot(JSON.parse(readFileSync(inputs['baseline-file'], 'utf8'))) : undefined;
@@ -64,7 +64,9 @@ runAction('Rod Preview Report', async () => {
         directory=mkdtempSync(join(tmpdir(),'rod-bundle-history-'));
         execFileSync('gh',['run','download',String(reference.id),'-R',owner+'/'+repo,'-n',inputs['history-artifact'],'-D',directory],{env:{...process.env,GH_TOKEN:inputs['github-token']},timeout:30000,stdio:'pipe'});
         const prior=parseSnapshot(JSON.parse(readFileSync(join(directory,basename(inputs['bundle-file'])),'utf8')));
-        sections.push(historicalSection(current,prior,reference.id));
+        const history=historicalSection(current,prior,reference.id);
+        history.rows[0].url='https://github.com/'+owner+'/'+repo+'/actions/runs/'+reference.id;
+        sections.push(history);
       } catch {
         sections.push({title:'Since last successful build',rows:[{label:'Reference',value:'Unavailable (no matching accessible snapshot)'}]});
       } finally {
@@ -78,7 +80,7 @@ runAction('Rod Preview Report', async () => {
       api.paginate(api.rest.actions.listJobsForWorkflowRunAttempt, { owner, repo, run_id, attempt_number: Number(process.env.GITHUB_RUN_ATTEMPT || 1), per_page: 100 }),
       api.paginate(api.rest.actions.listWorkflowRunArtifacts, { owner, repo, run_id, per_page: 100 }),
     ]);
-    sections.push(...workflowSections(jobs, artifacts));
+    sections.push(...workflowSections(jobs, artifacts, owner+'/'+repo, run_id));
   } catch {
     sections.push({title:'Workflow intelligence',rows:[{label:'Metrics',value:'Unavailable (check Actions read permission)'}]});
   }
@@ -87,7 +89,7 @@ runAction('Rod Preview Report', async () => {
     try {
       const comparison = await api.rest.repos.compareCommits({ owner, repo, base: previous, head: report.sha, per_page: 1 });
       sections.push({ title: 'Since last verified preview', rows: [
-        { label: 'Previous revision', value: previous.slice(0, 7) },
+        { label: 'Previous revision', value: previous.slice(0, 7), url:'https://github.com/'+owner+'/'+repo+'/commit/'+previous },
         { label: 'Comparison', value: comparison.data.status },
         { label: 'Ahead / behind', value: comparison.data.ahead_by + ' / ' + comparison.data.behind_by },
       ] });
