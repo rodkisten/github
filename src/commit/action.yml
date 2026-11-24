@@ -51,9 +51,10 @@ runs:
       env:
         HAS_APP_ID: ${{ inputs.app-id != '' }}
         HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
       run: |
-        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" ]]; then
-          echo "::error::Provide both app-id and private-key"
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" || ( "$HAS_APP_ID" != true && "$HAS_TOKEN" != true ) ]]; then
+          echo "::error::Provide app-id and private-key together, or an existing token"
           exit 1
         fi
     - id: auth

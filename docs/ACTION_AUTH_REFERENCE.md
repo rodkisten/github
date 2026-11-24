@@ -488,3 +488,59 @@ inputs:
     ref: main
     inputs: '{"environment":"production"}'
 ```
+
+## Operation examples
+
+All examples assume the App is installed on the target repository. Replace credentials with an existing token where supported (use github-token for console and format-report).
+
+```yaml
+- uses: rodkisten/github/src/commit@main
+  id: commit
+  with:
+    app-id: ${{ secrets.BOT_APP_ID }}
+    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+    branch: main
+    message: 'docs: update generated file'
+    files: '[{"path":"example.txt","content":"hello"}]'
+- uses: rodkisten/github/src/publish@main
+  with:
+    token: ${{ steps.auth.outputs.token }}
+    mode: commit
+    branch: main
+    commit-message: 'chore: generated files'
+- uses: rodkisten/github/src/publish@main
+  with:
+    app-id: ${{ secrets.BOT_APP_ID }}
+    private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+    mode: pull-request
+    branch: automation/generated
+    pr-title: Update generated files
+    commit-message: 'chore: generated files'
+    draft: 'true'
+- uses: rodkisten/github/src/create-pr@main
+  with:
+    token: ${{ steps.auth.outputs.token }}
+    head: automation/generated
+    base: main
+    title: Update generated files
+- uses: rodkisten/github/src/paths-filter@main
+  with:
+    token: ${{ github.token }}
+- uses: rodkisten/github/src/console@main
+  with:
+    defaults: rod-actions.yml
+    report: 'false'
+- uses: rodkisten/github/src/format-report@main
+  with:
+    github-token: ${{ steps.auth.outputs.token }}
+    pr-number: '123'
+    results-file: format-results.json
+```
+
+## Troubleshooting
+
+- Missing credentials: supply both App inputs or a token. Console can run without authentication when not fetching reports.
+- HTTP 403: check installation repository access and granted permissions.
+- Missing bundle: run npm ci, npm run build, then node scripts/validate-actions.mjs.
+- Workflow dispatch: the workflow must support workflow_dispatch and exist on the default branch.
+- Push: checkout first; non-fast-forward updates fail intentionally.
