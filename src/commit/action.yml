@@ -12,7 +12,6 @@ inputs:
     required: false
   branch:
     description: Target branch to create or update
-    value: ${{ steps.operation.outputs.branch }}
     required: true
   base:
     description: Base branch for creating a new target branch
@@ -22,7 +21,6 @@ inputs:
     required: true
   files:
     description: JSON array of {path, content, encoding?} file changes
-    value: ${{ steps.operation.outputs.files }}
     required: false
   files-path:
     description: Path to JSON array of file changes; preferred for large repositories
@@ -41,8 +39,10 @@ outputs:
     value: ${{ steps.operation.outputs.sha }}
   branch:
     description: Updated branch
+    value: ${{ steps.operation.outputs.branch }}
   files:
     description: Number of files included
+    value: ${{ steps.operation.outputs.files }}
 runs:
   using: composite
   steps:

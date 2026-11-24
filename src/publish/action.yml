@@ -16,7 +16,6 @@ inputs:
     default: pull-request
   branch:
     description: Target branch for commit mode or automation branch for PR mode
-    value: ${{ steps.operation.outputs.branch }}
     required: false
   base-branch:
     description: Base branch for pull requests (defaults to repository default branch)
@@ -62,6 +61,7 @@ outputs:
     value: ${{ steps.operation.outputs.commit-sha }}
   branch:
     description: Branch that received the commit
+    value: ${{ steps.operation.outputs.branch }}
   pr-number:
     description: Created or updated pull request number (empty in commit mode)
     value: ${{ steps.operation.outputs.pr-number }}

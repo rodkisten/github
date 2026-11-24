@@ -1,9 +1,15 @@
 name: 🧬 Central paths filter
 description: Match changed GitHub files against centralized repository YAML filters
 inputs:
+  app-id:
+    description: GitHub App ID
+    required: false
+  private-key:
+    description: GitHub App private key
+    required: false
   token:
     description: GitHub token with contents read and pull-requests read
-    required: true
+    required: false
   config-repository:
     description: Repository containing config/paths.yml
     required: false
@@ -47,14 +53,52 @@ inputs:
 outputs:
   changes:
     description: JSON array of matching filter names
+    value: ${{ steps.operation.outputs.changes }}
   any:
     description: Whether any filter matched
+    value: ${{ steps.operation.outputs.any }}
   files:
     description: JSON array of changed paths
+    value: ${{ steps.operation.outputs.files }}
   full-run:
     description: Whether all filters were selected as a safe initial-push fallback
+    value: ${{ steps.operation.outputs.full-run }}
   matrix:
     description: JSON array of filter-specific CI task configurations
+    value: ${{ steps.operation.outputs.matrix }}
 runs:
-  using: node24
-  main: ../../dist/paths-filter.js
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HAS_APP_ID: ${{ inputs.app-id != '' }}
+        HAS_PRIVATE_KEY: ${{ inputs.private-key != '' }}
+      run: |
+        if [[ "$HAS_APP_ID" != "$HAS_PRIVATE_KEY" ]]; then
+          echo "::error::Provide both app-id and private-key"
+          exit 1
+        fi
+    - id: auth
+      if: inputs.app-id != '' && inputs.private-key != ''
+      uses: rodkisten/github/src/app-token@main
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        permission-contents: read
+        permission-pull-requests: read
+    - id: operation
+      uses: rodkisten/github/src/paths-filter/internal@main
+      with:
+        token: ${{ steps.auth.outputs.token || inputs.token }}
+        config-repository: ${{ inputs.config-repository }}
+        config-ref: ${{ inputs.config-ref }}
+        config-path: ${{ inputs.config-path }}
+        base: ${{ inputs.base }}
+        repository-key: ${{ inputs.repository-key }}
+        working-directory: ${{ inputs.working-directory }}
+        test-command: ${{ inputs.test-command }}
+        build-command: ${{ inputs.build-command }}
+        lint-command: ${{ inputs.lint-command }}
+        run-tests: ${{ inputs.run-tests }}
+        run-build: ${{ inputs.run-build }}
+        run-lint: ${{ inputs.run-lint }}
