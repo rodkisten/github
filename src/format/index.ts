@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import * as core from '@actions/core';
 import { runAction } from '../utils/action.js';
-import { gitSync, listChangedFiles, listTrackedFiles } from '../utils/git.js';
+import { listChangedFiles, listTrackedFiles, listWorkspaceChanges } from '../utils/git.js';
 import { getInputs, setOutputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
 import { summary } from '../utils/summary.js';
@@ -182,6 +182,7 @@ export async function runFormatAction(): Promise<void> {
     return discovered;
   });
 
+  const before = new Map(files.map((path) => [path, readFileSync(path)]));
   const results = await logger.step(`Format & lint (${files.length} file(s))`, async () => {
     const res = await logger.spin(
       `Executing formatters & linters (${mode})`,
@@ -193,7 +194,7 @@ export async function runFormatAction(): Promise<void> {
     return res;
   });
 
-  const changed = mode === 'fix' ? gitSync(['diff', '--name-only']).split('\n').filter(Boolean) : [];
+  const changed = mode === 'fix' ? listWorkspaceChanges().filter((path) => before.has(path) && existsSync(path) && !before.get(path)!.equals(readFileSync(path))) : [];
   const failed = results.filter((result) => result.status === 'failed');
   const skipped = results.filter((result) => result.status === 'skipped');
   const suggestedCommit = `style(format): normalize ${changed.length || files.length} files [skip ci]`;

@@ -29,11 +29,10 @@ export function shellDialect(file: string): ShellDialect | undefined {
 
   if (ext === '.zsh' || ZSH_NAMES.has(name)) return 'zsh';
   if (ext === '.bash' || BASH_NAMES.has(name)) return 'bash';
-  if (ext === '.sh') return 'posix';
 
   try {
     const firstLine = readFileSync(file, 'utf8').split(/\r?\n/, 1)[0] ?? '';
-    if (!firstLine.startsWith('#!')) return undefined;
+    if (!firstLine.startsWith('#!')) return ext === '.sh' ? 'posix' : undefined;
     if (/\bzsh\b/.test(firstLine)) return 'zsh';
     if (/\bbash\b/.test(firstLine)) return 'bash';
     if (/\b(?:sh|dash|ash)\b/.test(firstLine)) return 'posix';
@@ -41,7 +40,7 @@ export function shellDialect(file: string): ShellDialect | undefined {
     return undefined;
   }
 
-  return undefined;
+  return ext === '.sh' ? 'posix' : undefined;
 }
 
 export async function shellTools(
