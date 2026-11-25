@@ -1,24 +1,21 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_core } from "./core-CtzvHsHd.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
+import { c as info, d as setOutput, f as setSecret, i as error, n as core_exports, p as warning, r as debug, u as setFailed } from "./core-B0CVUTgi.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 // src/execute/javascript.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 async function main() {
 	const token = process.env.ROD_EXEC_TOKEN;
 	delete process.env.ROD_EXEC_TOKEN;
-	if (token) import_core.setSecret(token);
-	const github = token ? import_github.getOctokit(token) : void 0;
-	const context = import_github.context;
+	if (token) setSecret(token);
+	const github = token ? getOctokit(token) : void 0;
+	const context$1 = context;
 	const logger = {
-		info: import_core.info,
-		warn: import_core.warning,
-		error: import_core.error,
-		debug: import_core.debug
+		info,
+		warn: warning,
+		error,
+		debug
 	};
 	const exec = (command) => new Promise((ok, fail) => {
 		const child = spawn("/bin/bash", [
@@ -31,13 +28,14 @@ async function main() {
 		child.once("error", fail);
 		child.once("close", (code, signal) => code === 0 ? ok() : fail(/* @__PURE__ */ new Error("Command failed: " + (code ?? signal))));
 	});
+	const require = createRequire(resolve(process.cwd(), "package.json"));
 	const helpers = {
-		core: import_core,
+		core: core_exports,
 		github,
-		context,
+		context: context$1,
 		exec,
 		logger,
-		require: createRequire(resolve(process.cwd(), "package.json"))
+		require
 	};
 	let result;
 	if (process.env.FILE) {
@@ -45,7 +43,7 @@ async function main() {
 		if (typeof mod.default !== "function") throw new Error("JavaScript file must export a default function");
 		result = await mod.default(helpers);
 	} else result = await new (Object.getPrototypeOf(async function() {})).constructor(...Object.keys(helpers), process.env.SCRIPT ?? "")(...Object.values(helpers));
-	import_core.setOutput("result", JSON.stringify(result ?? null));
+	setOutput("result", JSON.stringify(result ?? null));
 }
-main().catch((error) => import_core.setFailed(error instanceof Error ? error.message : String(error)));
+main().catch((error) => setFailed(error instanceof Error ? error.message : String(error)));
 export {};

@@ -13,27 +13,27 @@
     "actions:check": "node scripts/generate-public-actions.mjs --check"
   },
   "dependencies": {
-    "@actions/core": "^2.0.0",
-    "@actions/github": "^7.0.0",
-    "@actions/tool-cache": "^2.0.1",
-    "@octokit/auth-app": "^7.0.0",
-    "@octokit/request": "^9.0.0",
-    "handlebars": "^4.7.8",
-    "picomatch": "^4.0.3",
-    "yaml": "^2.8.1"
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "@actions/tool-cache": "^4.0.0",
+    "@octokit/auth-app": "^8.3.1",
+    "@octokit/request": "^10.0.16",
+    "handlebars": "^4.7.10",
+    "picomatch": "^4.0.7",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "@types/picomatch": "^4.0.2",
+    "@types/node": "^26.6.10",
+    "@types/picomatch": "^4.0.3",
     "tsdown": "^0.23.7",
-    "typescript": "^6.0.0",
-    "vitest": "^3.2.0",
-    "semantic-release": "^25.0.0",
-    "@semantic-release/commit-analyzer": "^13.0.0",
-    "@semantic-release/release-notes-generator": "^14.0.0",
-    "@semantic-release/npm": "^13.0.0",
-    "@semantic-release/github": "^12.0.0",
-    "@semantic-release/git": "^10.0.1"
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2",
+    "semantic-release": "^26.0.1",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "@semantic-release/npm": "^13.2.0",
+    "@semantic-release/github": "^12.0.11",
+    "@semantic-release/git": "^11.0.1"
   },
   "engines": {
     "node": ">=24"

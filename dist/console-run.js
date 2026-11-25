@@ -1,10 +1,7 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_core } from "./core-CtzvHsHd.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
-import { r as runCommand } from "./cmd-BHIVgqV-.js";
-// src/console/run-command.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
+import { u as setFailed } from "./core-B0CVUTgi.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
+import { r as runCommand } from "./cmd-Cu_ZwOYu.js";
 // src/console/runner.ts
 runAction("Shell Command", async () => {
 	const inputs = getInputs({
@@ -34,7 +31,7 @@ runAction("Shell Command", async () => {
 	if (result.exitCode !== 0) {
 		const failMessage = `${inputs.title} failed with exit code ${result.exitCode}`;
 		logger.error(failMessage, inputs.title);
-		import_core.setFailed(failMessage);
+		setFailed(failMessage);
 		return;
 	}
 	logger.success(`${inputs.title} completed in ${style.bold(`${result.durationMs}ms`)}`);

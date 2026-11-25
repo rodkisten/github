@@ -1,12 +1,10 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
 // src/preview-report/render.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 const MARKER = "<!-- rod-preview-report:v1 -->";
 const escapeText = (value) => value.replace(/[&<>]/g, (c) => ({
 	"&": "&amp;",
@@ -388,7 +386,7 @@ function previousVerifiedSha(body) {
 }
 // src/preview-report/index.ts
 runAction("Rod Preview Report", async () => {
-	const { owner, repo } = import_github.context.repo;
+	const { owner, repo } = context.repo;
 	const inputs = getInputs({
 		"github-token": {
 			required: true,
@@ -409,7 +407,7 @@ runAction("Rod Preview Report", async () => {
 		"bot-login": { default: "github-actions[bot]" }
 	});
 	const report = parseReport(JSON.parse(readFileSync(inputs["results-file"], "utf8")));
-	const api = import_github.getOctokit(inputs["github-token"]);
+	const api = getOctokit(inputs["github-token"]);
 	const pull_number = inputs["pr-number"];
 	const pr = await api.rest.pulls.get({
 		owner,
@@ -450,7 +448,7 @@ runAction("Rod Preview Report", async () => {
 				const run = await api.rest.actions.getWorkflowRun({
 					owner,
 					repo,
-					run_id: import_github.context.runId
+					run_id: context.runId
 				});
 				const reference = (await api.rest.actions.listWorkflowRuns({
 					owner,
@@ -508,7 +506,7 @@ runAction("Rod Preview Report", async () => {
 		}
 	}
 	try {
-		const run_id = import_github.context.runId;
+		const run_id = context.runId;
 		const [jobs, artifacts] = await Promise.all([api.paginate(api.rest.actions.listJobsForWorkflowRunAttempt, {
 			owner,
 			repo,
@@ -580,7 +578,7 @@ runAction("Rod Preview Report", async () => {
 	const body = renderReport({
 		...report,
 		sections: [...report.sections ?? [], ...sections]
-	}, owner + "/" + repo, import_github.context.runId) + (verified ? "\n<!-- rod-preview-verified-sha:" + verified + " -->" : "");
+	}, owner + "/" + repo, context.runId) + (verified ? "\n<!-- rod-preview-verified-sha:" + verified + " -->" : "");
 	const result = existing ? await api.rest.issues.updateComment({
 		owner,
 		repo,
