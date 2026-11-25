@@ -1,5 +1,5 @@
 import {readFileSync} from 'node:fs';
-const manifest=JSON.parse(readFileSync(new URL('../../assets/manifest.json',import.meta.url),'utf8'));
+const manifest=JSON.parse(readFileSync(new URL('./assets/manifest.json',import.meta.url),'utf8'));
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('|','&#124;').replaceAll('\n',' ');
 const url=s=>{const u=new URL(s);if(u.protocol!=='https:')throw Error('HTTPS required');return u.href.replaceAll('(','%28').replaceAll(')','%29');};
 export class Comment {

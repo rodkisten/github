@@ -1,7 +1,0 @@
-{
-  "name": "rod-actions-comment-kit",
-  "version": "0.1.0",
-  "type": "module",
-  "exports": "./packages/comment-kit/index.mjs",
-  "private": true
-}
