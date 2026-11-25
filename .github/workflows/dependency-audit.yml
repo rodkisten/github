@@ -1,0 +1,50 @@
+name: 🔐 Dependency audit
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 9 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/dependency-audit.yml
+permissions:
+  contents: read
+concurrency:
+  group: dependency-audit
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Audit locked dependency graph
+        shell: bash
+        run: |
+          mkdir -p audit
+          npm audit --json > audit/all.json || true
+          npm audit --omit=dev --json > audit/runtime.json || true
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const lines = ['## Dependency audit', '', '| Scope | Critical | High | Moderate | Low |', '|---|---:|---:|---:|---:|'];
+          for (const scope of ['all', 'runtime']) {
+            const report = JSON.parse(readFileSync('audit/' + scope + '.json', 'utf8'));
+            const v = report.metadata?.vulnerabilities;
+            if (!v || report.error) throw new Error('Audit unavailable: ' + scope);
+            lines.push('| ' + scope + ' | ' + [v.critical, v.high, v.moderate, v.low].join(' | ') + ' |');
+            if (v.critical || v.high) console.log('::warning::' + scope + ': high or critical vulnerabilities detected');
+          }
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-audit
+          path: audit/
+          retention-days: 7
