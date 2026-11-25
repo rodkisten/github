@@ -1,33 +1,3 @@
-import { a as style, i as logger, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
-import { t as summary } from "./summary-Dq1J9BUu.js";
-// src/ci-summary/index.ts
-function sanitizeCell(value) {
-	return value.replaceAll("|", "\\|").replaceAll("\n", " ");
-}
-runAction("CI Report", async () => {
-	if (!process.env.GITHUB_STEP_SUMMARY) throw new Error("GITHUB_STEP_SUMMARY is not set");
-	const inputs = getInputs({
-		title: { default: "CI report" },
-		status: { required: true },
-		details: { default: "" }
-	});
-	const repository = process.env.GITHUB_REPOSITORY || "unknown";
-	const workflow = process.env.GITHUB_WORKFLOW || "unknown";
-	logger.banner(inputs.title, `${repository} · ${workflow}`);
-	await logger.step("Write CI Job Summary", async () => {
-		logger.item("Repository", repository);
-		logger.item("Workflow", workflow);
-		logger.item("Status", style.bold(inputs.status));
-		logger.item("Has details", Boolean(inputs.details.trim()), true);
-		summary.heading(inputs.title, 2).table([{
-			Repository: sanitizeCell(repository),
-			Workflow: sanitizeCell(workflow),
-			Status: sanitizeCell(inputs.status)
-		}]);
-		if (inputs.details.trim()) summary.text(inputs.details);
-		await summary.write();
-	});
-	logger.success("CI report published to Job Summary");
-	logger.divider("", "═");
-});
-export {};
+import{a as e,i as t,r as n,t as r}from"./inputs-DGg0rlAX.js";import{t as i}from"./summary-CPZgta1q.js";function a(e){return e.replaceAll(`|`,`\\|`).replaceAll(`
+`,` `)}n(`CI Report`,async()=>{if(!process.env.GITHUB_STEP_SUMMARY)throw Error(`GITHUB_STEP_SUMMARY is not set`);let n=r({title:{default:`CI report`},status:{required:!0},details:{default:``}}),o=process.env.GITHUB_REPOSITORY||`unknown`,s=process.env.GITHUB_WORKFLOW||`unknown`;t.banner(n.title,`${o} · ${s}`),await t.step(`Write CI Job Summary`,async()=>{t.item(`Repository`,o),t.item(`Workflow`,s),t.item(`Status`,e.bold(n.status)),t.item(`Has details`,!!n.details.trim(),!0),i.heading(n.title,2).table([{Repository:a(o),Workflow:a(s),Status:a(n.status)}]),n.details.trim()&&i.text(n.details),await i.write()}),t.success(`CI report published to Job Summary`),t.divider(``,`═`)});export{};
+//# sourceMappingURL=ci-summary.js.map
