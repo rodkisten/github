@@ -1,0 +1,2 @@
+function e(e,n=`https://raw.githubusercontent.com/rodkisten/github/main/packages/comment-kit`){if(![`preview`,`architecture`,`security`,`diff`,`failure`,`ploocky`,`build`,`tests`].includes(e))throw Error(`Unknown banner`);return`![Rod Actions · `+e+`](`+t(n).replace(/\/$/,``)+`/assets/banners/`+e+`.png)`}const t=e=>{let t=new URL(e);if(t.protocol!==`https:`)throw Error(`HTTPS required`);return t.href.replaceAll(`(`,`%28`).replaceAll(`)`,`%29`)};export{e as t};
+//# sourceMappingURL=comment-kit-CqaAD9uS.js.map
