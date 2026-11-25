@@ -1,0 +1,17 @@
+name: 📋 CI summary
+description: Write a standardized GitHub Actions job summary
+inputs:
+  title:
+    description: Heading
+    required: false
+    default: CI report
+  status:
+    description: Result status
+    required: true
+  details:
+    description: Markdown details
+    required: false
+    default: ''
+runs:
+  using: node24
+  main: ../../dist/ci-summary.js
