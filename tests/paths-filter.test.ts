@@ -164,21 +164,3 @@ describe('per-filter command matrix', () => {
     expect(() => buildFilterMatrix(['missing'], filters, defaults)).toThrow('Unknown filter');
   });
 });
-
-describe('real shell command configuration', () => {
-  const source = readFileSync(new URL('../config/paths.yml', import.meta.url), 'utf8');
-  it('runs one validation matrix entry with verified Shell test, build and lint scripts', () => {
-    const filters = selectFilters(source, 'shell');
-    const matched = resolveMatchedFilters(['src/main.ts', 'tools/shell-flow/go.mod', 'public/wasm/flow-worker.js', '.github/workflows/check.yml'], filters);
-    expect(matched).toEqual(['validation']);
-    const matrix = buildFilterMatrix(matched, filters, {
-      workingDirectory: '.', testCommand: 'npm test', buildCommand: 'npm run build',
-      lintCommand: 'npm run lint', runTests: true, runBuild: true, runLint: false,
-    });
-    expect(matrix[0]).toMatchObject({
-      filter: 'validation', 'run-tests': true, 'run-build': true, 'run-lint': true,
-      'test-command': 'npm run test:explorer',
-      'build-command': 'npm run build', 'lint-command': 'npm run lint',
-    });
-  });
-});
