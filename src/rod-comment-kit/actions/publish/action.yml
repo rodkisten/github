@@ -1,0 +1,65 @@
+name: 📤 Publish Git changes
+description: Commit changes directly or publish/update a pull request with Handlebars templates
+inputs:
+  token:
+    description: GitHub token with contents:write and pull-requests:write for PR mode
+    required: true
+  mode:
+    description: commit or pull-request
+    required: true
+    default: pull-request
+  branch:
+    description: Target branch for commit mode or automation branch for PR mode
+    required: false
+  base-branch:
+    description: Base branch for pull requests (defaults to repository default branch)
+    required: false
+  commit-message:
+    description: Literal commit message (use commit-message-template for Handlebars)
+    required: false
+  commit-message-template:
+    description: Handlebars template for the commit message; takes precedence over commit-message
+    required: false
+  pr-title:
+    description: Literal pull request title
+    required: false
+  pr-title-template:
+    description: Handlebars template for the pull request title
+    required: false
+  pr-body:
+    description: Literal pull request body
+    required: false
+  pr-body-template:
+    description: Handlebars template for the pull request body
+    required: false
+  template-data:
+    description: Additional JSON object merged into the template context
+    required: false
+    default: '{}'
+  labels:
+    description: Comma-separated labels to apply to the pull request
+    required: false
+  draft:
+    description: Create or keep the pull request as draft
+    required: false
+    default: 'false'
+  author-name:
+    description: Git author and committer name
+    required: false
+  author-email:
+    description: Git author and committer email
+    required: false
+outputs:
+  commit-sha:
+    description: SHA of the created commit
+  branch:
+    description: Branch that received the commit
+  pr-number:
+    description: Created or updated pull request number (empty in commit mode)
+  pr-url:
+    description: Created or updated pull request URL (empty in commit mode)
+  files:
+    description: Newline-separated paths included in the commit
+runs:
+  using: node24
+  main: ../../dist/publish.js
