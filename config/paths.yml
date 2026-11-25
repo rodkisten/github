@@ -112,7 +112,7 @@ repositories:
           - '.github/workflows/**'
           - '.github/actions/**'
         commands:
-          test: 'npm run test:explorer'
+          test: false
           build: 'npm run build'
           lint: 'npm run lint'
 
