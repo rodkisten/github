@@ -1,0 +1,66 @@
+name: 🧬 Upgrade all dependencies
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/upgrade-dependencies.yml]
+permissions:
+  contents: read
+concurrency:
+  group: upgrade-all-dependencies
+  cancel-in-progress: false
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate GitHub App
+        id: app
+        uses: rodkisten/github/src/app-token@main
+        with:
+          app-id: ${{ secrets.BOT_APP_ID || vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Upgrade dependencies and regenerate lockfile
+        run: |
+          npx --yes npm-check-updates@latest --target latest -u
+          npm install
+          npm update
+      - name: Validate TypeScript and build
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+          node scripts/validate-actions.mjs
+          npm run docs:actions
+      - name: Audit dependencies
+        run: |
+          npm audit --omit=dev || true
+          npm audit || true
+      - name: Publish validated upgrade PR
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Already up to date' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="automation/dependency-upgrade-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git switch -c "$branch"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
+          git commit -m 'chore(deps): upgrade all dependencies to latest [deploy]'
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" --title '🧬 Upgrade all dependencies' --body "Latest stable npm dependencies, regenerated lockfile, typecheck, existing tests and rebuilt bundles. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
