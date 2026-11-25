@@ -1,15 +1,13 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
+import { i as __toESM } from "./rolldown-runtime-BVN1G_yT.js";
 import { readFile, writeFile } from "node:fs/promises";
-import { t as require_core } from "./core-CtzvHsHd.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { n as formatFiles, r as listFiles } from "./format-BMsLyRWC.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { n as gitSync } from "./git-D7-Jsfse.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
-import { t as require_dist } from "./dist-CuFDtFt3.js";
+import { u as setFailed } from "./core-B0CVUTgi.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { n as formatFiles, r as listFiles } from "./format-C7NPKtTc.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { n as gitSync } from "./git-Y17ci7qM.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
+import { t as require_dist } from "./dist-BWSPO5L4.js";
 // src/console/config.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 var import_dist = /* @__PURE__ */ __toESM(require_dist(), 1);
 const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 function mergeConfig(base, override) {
@@ -195,7 +193,7 @@ async function runFormatStep(inputs) {
 		});
 		if (results.some((result) => result.status === "failed")) {
 			logger.error("Formatting/lint issues detected");
-			import_core.setFailed("Formatting/lint issues detected");
+			setFailed("Formatting/lint issues detected");
 		} else logger.success(`Formatting/lint passed (${changed.length} file(s) modified)`);
 	});
 }
@@ -205,9 +203,9 @@ async function runReportStep(inputs, config) {
 		return;
 	}
 	if (!inputs.githubToken) throw new Error("github-token required for report mode");
-	const { owner, repo } = import_github.context.repo;
-	const runId = import_github.context.runId;
-	const client = import_github.getOctokit(inputs.githubToken);
+	const { owner, repo } = context.repo;
+	const runId = context.runId;
+	const client = getOctokit(inputs.githubToken);
 	await logger.step("Inspect workflow run & generate report", async () => {
 		const jobs = await logger.spin(`Listing jobs for run #${runId}`, () => client.paginate(client.rest.actions.listJobsForWorkflowRun, {
 			owner,
@@ -233,8 +231,8 @@ async function runReportStep(inputs, config) {
 	});
 }
 runAction("Rod Actions Console", async () => {
-	const { owner, repo } = import_github.context.repo;
-	logger.banner("Rod Actions Console", `${owner}/${repo} · Run #${import_github.context.runId}`);
+	const { owner, repo } = context.repo;
+	logger.banner("Rod Actions Console", `${owner}/${repo} · Run #${context.runId}`);
 	const inputs = parseConsoleInputs();
 	const config = await logger.step("Resolve console configuration", async () => {
 		const defaults = await readFile(inputs.defaultsPath, "utf8");

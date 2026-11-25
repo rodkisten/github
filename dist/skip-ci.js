@@ -1,9 +1,7 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
+import { t as context } from "./github-DeG2mx_2.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
 // src/skip-ci/rules.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 function evaluateSkipCi(commitMessage, actor, skipBots) {
 	if (/\[(skip\s+ci|ci\s+skip)\]/i.test(commitMessage)) return {
 		skip: true,
@@ -20,12 +18,12 @@ function evaluateSkipCi(commitMessage, actor, skipBots) {
 }
 // src/skip-ci/index.ts
 runAction("Skip CI Decision", async () => {
-	const { owner, repo } = import_github.context.repo;
+	const { owner, repo } = context.repo;
 	logger.banner("Skip CI Decision", `${owner}/${repo}`);
 	const inputs = await logger.step("Evaluate skip rules", () => {
 		const parsed = getInputs({
 			"commit-message": { required: true },
-			actor: { default: import_github.context.actor || "" },
+			actor: { default: context.actor || "" },
 			"skip-bots": {
 				type: "boolean",
 				default: false

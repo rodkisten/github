@@ -1,11 +1,9 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
 import { readFileSync } from "node:fs";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { o as validateBranchName, t as commitViaGitDatabase } from "./git-D7-Jsfse.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { o as validateBranchName, t as commitViaGitDatabase } from "./git-Y17ci7qM.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
 // src/commit/operation.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 async function createAtomicCommit(octokit, options) {
 	const { owner, repo, branch, base, message, files, authorName, authorEmail } = options;
 	return logger.step(`Create atomic commit on ${branch}`, async () => {
@@ -41,7 +39,7 @@ function validateChanges(changes) {
 }
 // src/commit/index.ts
 runAction("App-Authored Commit", async () => {
-	const { owner, repo } = import_github.context.repo;
+	const { owner, repo } = context.repo;
 	logger.banner("App-Authored Commit", `${owner}/${repo}`);
 	const inputs = await logger.step("Validate inputs & file changes", () => {
 		const parsed = getInputs({
@@ -50,7 +48,7 @@ runAction("App-Authored Commit", async () => {
 				secret: true
 			},
 			branch: { required: true },
-			base: { default: import_github.context.payload.repository?.default_branch || "main" },
+			base: { default: context.payload.repository?.default_branch || "main" },
 			message: { required: true },
 			files: { default: "" },
 			"files-path": { default: "" },
@@ -72,7 +70,7 @@ runAction("App-Authored Commit", async () => {
 			fileChanges
 		};
 	});
-	const result = await createAtomicCommit(import_github.getOctokit(inputs.token), {
+	const result = await createAtomicCommit(getOctokit(inputs.token), {
 		owner,
 		repo,
 		branch: inputs.branch,

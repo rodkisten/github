@@ -1,10 +1,8 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
-import { t as createOrUpdatePullRequest } from "./operation-0m0FzR8I.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
+import { t as createOrUpdatePullRequest } from "./operation-D11gtpwn.js";
 // src/create-pr/helpers.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 function appendConversationUrl(body, url) {
 	if (!url || body.includes(url)) return body;
 	return [
@@ -15,7 +13,7 @@ function appendConversationUrl(body, url) {
 }
 // src/create-pr/index.ts
 runAction("Create or Update PR", async () => {
-	const { owner, repo } = import_github.context.repo;
+	const { owner, repo } = context.repo;
 	logger.banner("Create or Update PR", `${owner}/${repo}`);
 	const inputs = await logger.step("Validate PR inputs", () => {
 		const parsed = getInputs({
@@ -24,7 +22,7 @@ runAction("Create or Update PR", async () => {
 				secret: true
 			},
 			head: { required: true },
-			base: { default: import_github.context.payload.repository?.default_branch || "main" },
+			base: { default: context.payload.repository?.default_branch || "main" },
 			title: { required: true },
 			body: { default: "" },
 			draft: {
@@ -45,7 +43,7 @@ runAction("Create or Update PR", async () => {
 		logger.item("Update existing", parsed["update-existing"], true);
 		return parsed;
 	});
-	const octokit = import_github.getOctokit(inputs.token);
+	const octokit = getOctokit(inputs.token);
 	const result = await createOrUpdatePullRequest(octokit, {
 		owner,
 		repo,

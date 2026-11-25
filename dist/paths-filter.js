@@ -1,8 +1,8 @@
-import { r as __toESM, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
-import { t as require_dist } from "./dist-CuFDtFt3.js";
+import { i as __toESM, t as __commonJSMin } from "./rolldown-runtime-BVN1G_yT.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
+import { t as require_dist } from "./dist-BWSPO5L4.js";
 // node_modules/picomatch/lib/constants.js
 var require_constants = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	const WIN_SLASH = "\\\\/";
@@ -1903,8 +1903,8 @@ var require_picomatch$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	*/
 	module.exports = picomatch;
 }));
-// node_modules/picomatch/index.js
-var require_picomatch = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+// src/paths-filter/rules.ts
+var import_picomatch = /* @__PURE__ */ __toESM((/* @__PURE__ */ __commonJSMin(((exports, module) => {
 	const pico = require_picomatch$1();
 	const utils = require_utils();
 	function picomatch(glob, options, returnState = false) {
@@ -1916,10 +1916,7 @@ var require_picomatch = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	}
 	Object.assign(picomatch, pico);
 	module.exports = picomatch;
-}));
-// src/paths-filter/rules.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
-var import_picomatch = /* @__PURE__ */ __toESM(require_picomatch(), 1);
+})))(), 1);
 var import_dist = /* @__PURE__ */ __toESM(require_dist(), 1);
 const configUrl = () => `https://github.com/rodkisten/github/blob/main/config/paths.yml#L1`;
 function patternsFor(name, rule, repository) {
@@ -2069,7 +2066,7 @@ async function fetchCentralConfig(octokit, inputs) {
 	});
 }
 async function collectChangedFiles(octokit, owner, repo, baseOverride) {
-	const { eventName, payload, sha } = import_github.context;
+	const { eventName, payload, sha } = context;
 	if (eventName === "pull_request" || eventName === "pull_request_target") {
 		const number = payload.pull_request?.number;
 		if (!number) throw new Error("Missing pull request number");
@@ -2112,8 +2109,8 @@ async function collectChangedFiles(octokit, owner, repo, baseOverride) {
 	throw new Error(`Unsupported event ${eventName}; use a dedicated dispatch policy`);
 }
 runAction("Central Paths Filter", async () => {
-	const { owner, repo } = import_github.context.repo;
-	logger.banner("Central Paths Filter", `${owner}/${repo} · ${import_github.context.eventName}`);
+	const { owner, repo } = context.repo;
+	logger.banner("Central Paths Filter", `${owner}/${repo} · ${context.eventName}`);
 	const inputs = await logger.step("Load inputs & configuration", () => {
 		const parsed = parseActionInputs(repo);
 		logger.item("Config repository", `${parsed.configOwner}/${parsed.configRepo}`);
@@ -2121,7 +2118,7 @@ runAction("Central Paths Filter", async () => {
 		logger.item("Repository key", parsed.repositoryKey, true);
 		return parsed;
 	});
-	const octokit = import_github.getOctokit(inputs.token);
+	const octokit = getOctokit(inputs.token);
 	const filters = await logger.step("Resolve repository filter rules", async () => {
 		const selected = selectFilters(await fetchCentralConfig(octokit, inputs), inputs.repositoryKey);
 		logger.item("Available filters", Object.keys(selected).join(", "), true);

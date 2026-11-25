@@ -1,10 +1,8 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
 import { readFileSync } from "node:fs";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { n as gitSync } from "./git-D7-Jsfse.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { n as gitSync } from "./git-Y17ci7qM.js";
 // src/format/report.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
 const MARKER = "<!-- rod-format-report -->";
 function reportMarkdown(results, changed, mode, scope) {
 	const counts = {
@@ -41,7 +39,7 @@ function reportMarkdown(results, changed, mode, scope) {
 	].join("\n");
 }
 async function runFormatReportAction() {
-	const { owner, repo } = import_github.context.repo;
+	const { owner, repo } = context.repo;
 	const inputs = getInputs({
 		"github-token": {
 			required: true,
@@ -72,7 +70,7 @@ async function runFormatReportAction() {
 		logger.item("Changed files", changed.length, true);
 		return reportMarkdown(results, changed, inputs.mode, inputs.scope);
 	});
-	const octokit = import_github.getOctokit(inputs["github-token"]);
+	const octokit = getOctokit(inputs["github-token"]);
 	await logger.step("Upsert sticky PR comment", async () => {
 		const existing = (await logger.spin(`Fetching comments on PR #${inputs["pr-number"]}`, () => octokit.paginate(octokit.rest.issues.listComments, {
 			owner,

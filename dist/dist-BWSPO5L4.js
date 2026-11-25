@@ -1,4 +1,4 @@
-import { n as __require, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
+import { r as __require, t as __commonJSMin } from "./rolldown-runtime-BVN1G_yT.js";
 // node_modules/yaml/dist/nodes/identity.js
 var require_identity = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const ALIAS = Symbol.for("yaml.alias");

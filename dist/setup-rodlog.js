@@ -1,14 +1,12 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
 import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { t as require_core } from "./core-CtzvHsHd.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { n as cmd } from "./cmd-BHIVgqV-.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
+import { p as warning, t as addPath } from "./core-B0CVUTgi.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { n as cmd } from "./cmd-Cu_ZwOYu.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
 // src/setup-rodlog/index.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 function resolvePlatformBinary() {
 	const platform = process.platform;
 	const arch = process.arch;
@@ -46,7 +44,7 @@ function printFallbackWarningBox(attemptedUrl, reason) {
 		""
 	].join("\n");
 	console.warn(style.yellow ? style.yellow(style.bold(box)) : box);
-	import_core.warning(`[rodlog fallback] Falha ao baixar de ${attemptedUrl} (${reason}). Usando wrapper transparente.`);
+	warning(`[rodlog fallback] Falha ao baixar de ${attemptedUrl} (${reason}). Usando wrapper transparente.`);
 }
 function installFallbackScript(targetPath) {
 	writeFileSync(targetPath, `#!/usr/bin/env node
@@ -119,7 +117,7 @@ runAction("Setup rodlog", async () => {
 			} finally {
 				rmSync(stageFile, { force: true });
 			}
-			import_core.addPath(runnerTemp);
+			addPath(runnerTemp);
 			const versionRes = await cmd(`"${targetPath}" version`).nothrow();
 			logger.item("Verified SHA-256", `${expectedHash.slice(0, 12)}...`);
 			logger.item("Installed binary", targetPath);
@@ -131,7 +129,7 @@ runAction("Setup rodlog", async () => {
 		printFallbackWarningBox(attemptedUrl, fallbackReason);
 		mkdirSync(runnerTemp, { recursive: true });
 		installFallbackScript(targetPath);
-		import_core.addPath(runnerTemp);
+		addPath(runnerTemp);
 		logger.item("Fallback wrapper", targetPath, true);
 	}
 	setOutputs({

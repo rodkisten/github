@@ -1,9 +1,9 @@
-import { n as __require, r as __toESM, t as __commonJSMin } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_github } from "./github-W8iOYbtf.js";
-import { t as createOrUpdatePullRequest } from "./operation-0m0FzR8I.js";
-import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-CY5RWTKN.js";
-import { a as listWorkspaceChanges, o as validateBranchName, t as commitViaGitDatabase } from "./git-D7-Jsfse.js";
-import { t as summary } from "./summary-DmC3uIL8.js";
+import { i as __toESM, r as __require, t as __commonJSMin } from "./rolldown-runtime-BVN1G_yT.js";
+import { n as getOctokit, t as context } from "./github-DeG2mx_2.js";
+import { t as createOrUpdatePullRequest } from "./operation-D11gtpwn.js";
+import { a as style, i as logger, n as setOutputs, r as runAction, t as getInputs } from "./inputs-EIoaNpAD.js";
+import { a as listWorkspaceChanges, o as validateBranchName, t as commitViaGitDatabase } from "./git-Y17ci7qM.js";
+import { t as summary } from "./summary-Dq1J9BUu.js";
 // node_modules/handlebars/dist/cjs/handlebars/utils.js
 var require_utils = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.__esModule = true;
@@ -7346,8 +7346,8 @@ var require_printer = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return pair.key + "=" + this.accept(pair.value);
 	};
 }));
-// node_modules/handlebars/lib/index.js
-var require_lib = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+// src/publish/index.ts
+var import_lib = /* @__PURE__ */ __toESM((/* @__PURE__ */ __commonJSMin(((exports, module) => {
 	var handlebars = require_handlebars()["default"];
 	var printer = require_printer();
 	handlebars.PrintVisitor = printer.PrintVisitor;
@@ -7362,10 +7362,7 @@ var require_lib = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		__require.extensions[".handlebars"] = extension;
 		__require.extensions[".hbs"] = extension;
 	}
-}));
-// src/publish/index.ts
-var import_github = /* @__PURE__ */ __toESM(require_github(), 1);
-var import_lib = /* @__PURE__ */ __toESM(require_lib(), 1);
+})))(), 1);
 function registerHelpers() {
 	import_lib.default.registerHelper("upper", (value) => String(value ?? "").toUpperCase());
 	import_lib.default.registerHelper("lower", (value) => String(value ?? "").toLowerCase());
@@ -7390,11 +7387,11 @@ function render(template, context, label) {
 }
 runAction("Publish Git Changes", async () => {
 	registerHelpers();
-	const context = import_github.context;
-	const { owner, repo } = context.repo;
+	const context$1 = context;
+	const { owner, repo } = context$1.repo;
 	if (!owner || !repo) throw new Error("Cannot resolve repository from GitHub context");
 	logger.banner("Publish Git Changes", `${owner}/${repo}`);
-	const payload = context.payload;
+	const payload = context$1.payload;
 	const inputs = await logger.step("Validate publish configuration", () => {
 		const parsed = getInputs({
 			token: {
@@ -7435,10 +7432,10 @@ runAction("Publish Git Changes", async () => {
 				type: "boolean",
 				default: false
 			},
-			"author-name": { default: context.actor || "Rod GitHub App" },
-			"author-email": { default: `${context.actor || "github-actions[bot]"}@users.noreply.github.com` }
+			"author-name": { default: context$1.actor || "Rod GitHub App" },
+			"author-email": { default: `${context$1.actor || "github-actions[bot]"}@users.noreply.github.com` }
 		});
-		const targetBranch = parsed.mode === "commit" ? parsed.branch || context.ref.replace(/^refs\/heads\//, "") : parsed.branch || `automation/${context.workflow.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+		const targetBranch = parsed.mode === "commit" ? parsed.branch || context$1.ref.replace(/^refs\/heads\//, "") : parsed.branch || `automation/${context$1.workflow.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 		validateBranchName(targetBranch);
 		validateBranchName(parsed["base-branch"]);
 		logger.item("Mode", parsed.mode);
@@ -7455,23 +7452,23 @@ runAction("Publish Git Changes", async () => {
 		logger.item("Changed/untracked files", changed.length, true);
 		return changed;
 	});
-	const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+	const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context$1.runId}`;
 	const templateContext = {
 		repository: `${owner}/${repo}`,
 		owner,
 		repo,
 		branch: inputs.targetBranch,
 		baseBranch: inputs["base-branch"],
-		sha: context.sha,
-		shortSha: context.sha.slice(0, 7),
-		actor: context.actor,
-		workflow: context.workflow,
-		runId: context.runId,
-		runNumber: context.runNumber,
+		sha: context$1.sha,
+		shortSha: context$1.sha.slice(0, 7),
+		actor: context$1.actor,
+		workflow: context$1.workflow,
+		runId: context$1.runId,
+		runNumber: context$1.runNumber,
 		runUrl,
-		eventName: context.eventName,
-		ref: context.ref,
-		refName: context.ref.replace(/^refs\/(heads|tags)\//, ""),
+		eventName: context$1.eventName,
+		ref: context$1.ref,
+		refName: context$1.ref.replace(/^refs\/(heads|tags)\//, ""),
 		prNumber: payload.pull_request?.number ?? null,
 		timestamp: (/* @__PURE__ */ new Date()).toISOString(),
 		files: paths,
@@ -7481,7 +7478,7 @@ runAction("Publish Git Changes", async () => {
 	};
 	const commitMessage = render(inputs["commit-message-template"] || inputs["commit-message"] || "chore: automated update", templateContext, "commit message");
 	if (!commitMessage) throw new Error("Rendered commit message cannot be empty");
-	const octokit = import_github.getOctokit(inputs.token);
+	const octokit = getOctokit(inputs.token);
 	const commitResult = await logger.step(`Commit ${paths.length} file(s) to ${inputs.targetBranch}`, () => commitViaGitDatabase(octokit, {
 		owner,
 		repo,

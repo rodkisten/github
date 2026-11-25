@@ -1,8 +1,6 @@
-import { r as __toESM } from "./rolldown-runtime-DegdyBIC.js";
-import { t as require_core } from "./core-CtzvHsHd.js";
+import { a as getBooleanInput, d as setOutput, f as setSecret, o as getInput, u as setFailed } from "./core-B0CVUTgi.js";
 import * as process from "node:process";
 // src/utils/logger.ts
-var import_core = /* @__PURE__ */ __toESM(require_core(), 1);
 const IS_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true";
 const IS_TTY = Boolean(process.stdout.isTTY);
 const FORCE_COLOR = process.env.FORCE_COLOR !== "0";
@@ -223,7 +221,7 @@ function runAction(name, fn) {
 	fn().catch((error) => {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.error(message, name);
-		import_core.setFailed(message);
+		setFailed(message);
 	});
 }
 // src/utils/inputs.ts
@@ -233,8 +231,8 @@ function parseListInput(raw) {
 function getInputs(schema) {
 	const result = {};
 	for (const [key, field] of Object.entries(schema)) {
-		const raw = import_core.getInput(key, { required: field.required ?? false });
-		if (field.secret && raw) import_core.setSecret(raw);
+		const raw = getInput(key, { required: field.required ?? false });
+		if (field.secret && raw) setSecret(raw);
 		if (!raw && field.default !== void 0) {
 			result[key] = field.default;
 			continue;
@@ -245,7 +243,7 @@ function getInputs(schema) {
 		}
 		switch (field.type) {
 			case "boolean":
-				result[key] = raw ? import_core.getBooleanInput(key) : Boolean(field.default ?? false);
+				result[key] = raw ? getBooleanInput(key) : Boolean(field.default ?? false);
 				break;
 			case "number": {
 				const parsed = Number(raw);
@@ -268,7 +266,7 @@ function setOutputs(outputs) {
 	for (const [key, value] of Object.entries(outputs)) {
 		if (value === void 0 || value === null) continue;
 		const serialized = typeof value === "object" ? JSON.stringify(value) : String(value);
-		import_core.setOutput(key, serialized);
+		setOutput(key, serialized);
 	}
 }
 export { style as a, logger as i, setOutputs as n, runAction as r, getInputs as t };
