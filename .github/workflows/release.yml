@@ -109,6 +109,11 @@ jobs:
             git push origin HEAD:main
           fi
 
+      - name: 🟩 Setup Node.js for release
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26.13.0'
+
       - name: 🚀 Semantic Release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
