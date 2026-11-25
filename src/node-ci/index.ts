@@ -50,21 +50,17 @@ runAction('TypeScript Node CI', async () => {
     }
 
     try {
-      const result = await logger.step(`${task.name.toUpperCase()}: ${task.command}`, async () => {
+      await logger.step(`${task.name.toUpperCase()}: ${task.command}`, async () => {
         logger.item('Working directory', cwd);
         if (scope) logger.item('Filter scope', scope);
         const execRes = await execute(task.command, cwd, undefined, commandEnv);
         logger.item('Exit code', execRes.exitCode);
         logger.item('Duration', `${execRes.durationMs}ms`, true);
-        return execRes;
+        results.push({ name: task.name, ...execRes });
+        if (execRes.exitCode !== 0) {
+          throw new Error(`${task.name} exited with code ${execRes.exitCode}`);
+        }
       });
-
-      results.push({ name: task.name, ...result });
-
-      if (result.exitCode !== 0) {
-        failure = new Error(`${task.name} exited with code ${result.exitCode}`);
-        break;
-      }
     } catch (error) {
       failure = error instanceof Error ? error : new Error(String(error));
       break;
