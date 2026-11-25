@@ -1,61 +1,60 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defineConfig } from 'tsdown';
 
-function discoverActions(srcDir = 'src'): string[] {
-  return readdirSync(srcDir, { withFileTypes: true })
-    .filter((dirent) => dirent.isDirectory() && existsSync(join(srcDir, dirent.name, 'index.ts')))
-    .map((dirent) => dirent.name);
-}
+// Lê as pastas de src apenas uma vez para reutilizar no build e no onSuccess
+const srcDirs = readdirSync('src', { withFileTypes: true })
+  .filter((dirent) => dirent.isDirectory())
+  .map((dirent) => dirent.name);
 
-const actions = discoverActions('src');
-const entries = {
-  ...Object.fromEntries(actions.map((name) => [name, `./src/${name}/index.ts`])),
-  'format-report': './src/format/report.ts',
-  'console-run': './src/console/runner.ts',
-  'execute-js': './src/execute/javascript.ts',
-};
+const actionEntries = Object.fromEntries(
+  srcDirs
+    .filter((name) => existsSync(join('src', name, 'index.ts')))
+    .map((name) => [name, `./src/${name}/index.ts`])
+);
 
 export default defineConfig({
-  entry: entries,
+  entry: {
+    ...actionEntries,
+    'format-report': './src/format/report.ts',
+    'console-run': './src/console/runner.ts',
+    'execute-js': './src/execute/javascript.ts',
+  },
 
   format: 'esm',
-
-  outExtensions: () => ({
-    js: '.js',
-  }),
-
+  outExtensions: () => ({ js: '.js' }),
   platform: 'node',
   target: 'node24',
-
   outDir: 'dist',
-
-  // Limpa apenas o diretório de saída e reconstrói todas as entradas.
   clean: true,
 
-  // Mantém dependências das Actions dentro dos bundles para execução standalone.
-  noExternal: [
-    /^@actions\//,
-    /^@octokit\//,
-    /^yaml$/,
-    /^picomatch$/,
-    /^handlebars$/,
-  ],
+  // --- Otimizações e Debug ---
+  minify: true,
+  treeshake: true,
+  sourcemap: true, // Gera .js.map ao lado de cada bundle
 
-  onSuccess() {
-    for (const name of readdirSync('src', { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)) {
-      const srcYml = join('src', name, 'action.yml');
-      if (!existsSync(srcYml)) continue;
+  // Empacota TODAS as dependências externas automaticamente (ignora builtins node:*)
+  noExternal: [/.*/],
 
-      const destDir = join('dist', name);
-      mkdirSync(destDir, { recursive: true });
+  // Executa cópia e ajuste dos manifestos em paralelo
+  async onSuccess() {
+    await Promise.all(
+      srcDirs.map(async (name) => {
+        const srcYml = join('src', name, 'action.yml');
+        if (!existsSync(srcYml)) return;
 
-      const content = readFileSync(srcYml, 'utf8').replace(
-        new RegExp(`(\\.\\./)+dist/${name}\\.js`),
-        `../${name}.js`
-      );
+        const destDir = join('dist', name);
+        await mkdir(destDir, { recursive: true });
 
-      writeFileSync(join(destDir, 'action.yml'), content, 'utf8');
-    }
+        const raw = await readFile(srcYml, 'utf8');
+        const updated = raw.replace(
+          new RegExp(`(\\.\\./)+dist/${name}\\.js`),
+          `../${name}.js`
+        );
+
+        await writeFile(join(destDir, 'action.yml'), updated, 'utf8');
+      })
+    );
   },
 });
