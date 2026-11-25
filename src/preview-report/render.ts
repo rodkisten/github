@@ -1,3 +1,4 @@
+import { bannerMarkdown } from '../../packages/comment-kit/index.mjs';
 export const MARKER = '<!-- rod-preview-report:v1 -->';
 
 export interface ReportSection {
@@ -52,7 +53,7 @@ export function renderReport(r: PreviewReport, repository: string, runId: number
     ...s.rows.map(row => '| ' + (safeUrl(row.url) ? '[' + escapeText(row.label) + '](' + row.url + ')' : escapeText(row.label)) + ' | ' + (row.status ? icons[row.status] : '') + escapeText(row.value) + ' |'),
     '', ...(s.collapsed ? ['</details>', ''] : []),
   ]);
-  const header = [MARKER, ...(r.banner ? ['![Preview banner](' + r.banner + ')', ''] : []), '## ' + escapeText(r.title), '',
+  const header = [MARKER, ...(r.banner ? ['![Preview banner](' + r.banner + ')', ''] : [bannerMarkdown(r.status === 'failure' ? 'failure' : 'preview'), '']), '## ' + escapeText(r.title), '',
     ...(r.description ? [escapeText(r.description), ''] : []), '**Status:** ' + status, '',
     ...(r.status === 'success' ? ['[Open preview](' + r.url + ')', ''] : []),
     '| Revision | Workflow |', '| :-- | :-- |',

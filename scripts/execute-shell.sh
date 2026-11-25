@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-started="$(date +%s%3N)"
+monotonic_ms() { awk '{printf "%.0f\n", $1 * 1000}' /proc/uptime; }
+started="$(monotonic_ms)"
 finish() {
   local status=$? elapsed
-  elapsed=$(( $(date +%s%3N) - started ))
+  elapsed=$(( $(monotonic_ms) - started ))
   printf 'duration-ms=%s\n' "$elapsed" >> "$GITHUB_OUTPUT"
   printf '### Universal executor\n\n- Manager: %s\n- Exit code: %s\n- Install and execution: %s ms\n' "$PM" "$status" "$elapsed" >> "$GITHUB_STEP_SUMMARY"
   exit "$status"

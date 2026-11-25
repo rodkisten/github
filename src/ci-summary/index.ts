@@ -1,3 +1,4 @@
+import { bannerMarkdown } from '../../packages/comment-kit/index.mjs';
 import { runAction } from '../utils/action.js';
 import { getInputs } from '../utils/inputs.js';
 import { logger, style } from '../utils/logger.js';
@@ -29,7 +30,7 @@ runAction('CI Report', async () => {
     logger.item('Status', style.bold(inputs.status));
     logger.item('Has details', Boolean(inputs.details.trim()), true);
 
-    summary.heading(inputs.title, 2).table([
+    summary.text(bannerMarkdown(/fail|error/i.test(inputs.status) ? 'failure' : 'build')).heading(inputs.title, 2).table([
       {
         Repository: sanitizeCell(repository),
         Workflow: sanitizeCell(workflow),
