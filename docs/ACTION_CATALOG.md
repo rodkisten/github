@@ -44,6 +44,7 @@ Runtime: `composite`
 | `permission-pull-requests` | No |  | Pull requests permission |
 | `permission-issues` | No |  | Issues permission |
 | `permission-actions` | No |  | Actions permission |
+| `permission-workflows` | No |  | Workflows permission |
 
 ### Outputs
 
