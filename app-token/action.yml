@@ -33,6 +33,10 @@ inputs:
     description: Actions permission
     required: false
     default: ""
+  permission-workflows:
+    description: Workflows permission
+    required: false
+    default: ""
 outputs:
   token:
     description: Short-lived installation token
@@ -54,3 +58,4 @@ runs:
         permission-pull-requests: ${{ inputs.permission-pull-requests }}
         permission-issues: ${{ inputs.permission-issues }}
         permission-actions: ${{ inputs.permission-actions }}
+        permission-workflows: ${{ inputs.permission-workflows }}
