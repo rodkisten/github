@@ -1,0 +1,169 @@
+name: Runtime · Hosted image build
+on:
+  workflow_call:
+    inputs:
+      source-sha:
+        required: true
+        type: string
+      request-id:
+        required: true
+        type: string
+      workspace-id:
+        required: true
+        type: string
+      target-id:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      context:
+        default: .
+        type: string
+      platforms:
+        default: linux/amd64
+        type: string
+    outputs:
+      digest:
+        description: Immutable GHCR image digest
+        value: ${{ jobs.build.outputs.digest }}
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: runtime-build-${{ github.repository }}-${{ inputs.workspace-id }}-${{ inputs.target-id }}-${{ inputs.request-id }}
+      cancel-in-progress: false
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+    steps:
+      - name: Validate immutable build request
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha }}
+          REQUEST_ID: ${{ inputs.request-id }}
+          WORKSPACE_ID: ${{ inputs.workspace-id }}
+          TARGET_ID: ${{ inputs.target-id }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          BUILD_CONTEXT: ${{ inputs.context }}
+          PLATFORMS: ${{ inputs.platforms }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          assert.match(process.env.SOURCE_SHA, /^[a-f0-9]{40}$/);
+          assert.match(process.env.REQUEST_ID, /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
+          assert.match(process.env.WORKSPACE_ID, /^[A-Za-z0-9_-]{1,128}$/);
+          assert.match(process.env.TARGET_ID, /^[a-z][a-z0-9-]{0,47}$/);
+          for (const [key,value] of Object.entries({dockerfile:process.env.DOCKERFILE,context:process.env.BUILD_CONTEXT})) {
+            assert.ok(value && value.length<=300 && (key==='context'&&value==='.' || /^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(value)), 'Invalid build path');
+            assert.ok(!value.split('/').includes('..'));
+          }
+          const platforms=process.env.PLATFORMS.split(',');
+          assert.ok(platforms.length>=1&&platforms.length<=2&&new Set(platforms).size===platforms.length&&platforms.every(p=>['linux/amd64','linux/arm64'].includes(p)));
+          NODE
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require committed source in the default branch
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          BUILD_CONTEXT: ${{ inputs.context }}
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" "refs/remotes/origin/$DEFAULT_BRANCH"
+          node --input-type=module <<'NODE'
+          import {realpath,stat} from 'node:fs/promises';
+          import assert from 'node:assert/strict';
+          const root=await realpath('.');
+          for(const key of ['DOCKERFILE','BUILD_CONTEXT']) {
+            const path=await realpath(process.env[key]);
+            assert.ok(path===root||path.startsWith(root+'/'),'Build path escaped repository');
+            assert.ok(key==='DOCKERFILE'?(await stat(path)).isFile():(await stat(path)).isDirectory());
+          }
+          NODE
+      - uses: docker/setup-qemu-action@v3
+        if: contains(inputs.platforms, 'arm64')
+      - uses: docker/setup-buildx-action@v4
+      - name: Authenticate only the hosted runner to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute immutable run tag
+        id: metadata
+        env:
+          TARGET_ID: ${{ inputs.target-id }}
+          SOURCE_SHA: ${{ inputs.source-sha }}
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}/$TARGET_ID"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "tag=$image:sha-$SOURCE_SHA-run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Build on hosted runner and publish image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.metadata.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ inputs.source-sha }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=rod-runtime-${{ inputs.target-id }}
+          cache-to: type=gha,mode=max,scope=rod-runtime-${{ inputs.target-id }}
+      - name: Write versioned build receipt
+        env:
+          SOURCE_SHA: ${{ inputs.source-sha }}
+          REQUEST_ID: ${{ inputs.request-id }}
+          WORKSPACE_ID: ${{ inputs.workspace-id }}
+          TARGET_ID: ${{ inputs.target-id }}
+          PLATFORMS: ${{ inputs.platforms }}
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const env=process.env;
+          assert.match(env.DIGEST,/^sha256:[a-f0-9]{64}$/);
+          const prefix=env.GITHUB_REPOSITORY+'/';
+          assert.ok(env.WORKFLOW_REF.startsWith(prefix));
+          const workflowFile=env.WORKFLOW_REF.slice(prefix.length).split('@')[0];
+          assert.match(workflowFile,/^\.github\/workflows\/[A-Za-z0-9_-]+\.ya?ml$/);
+          const result={schemaVersion:1,requestId:env.REQUEST_ID,workspaceId:env.WORKSPACE_ID,targetId:env.TARGET_ID,repository:env.GITHUB_REPOSITORY.toLowerCase(),sourceSha:env.SOURCE_SHA,workflowSha:env.WORKFLOW_SHA,workflowFile,runId:Number(env.GITHUB_RUN_ID),runAttempt:Number(env.GITHUB_RUN_ATTEMPT),imageRepository:env.IMAGE,digest:env.DIGEST,platforms:env.PLATFORMS.split(',')};
+          writeFileSync('runtime-build-result.json',JSON.stringify(result,null,2));
+          NODE
+      - name: Archive provenance receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: rod-build-${{ inputs.request-id }}-attempt-${{ github.run_attempt }}
+          path: runtime-build-result.json
+          retention-days: 30
+          if-no-files-found: error
+      - name: Link image and build
+        env:
+          IMAGE: ${{ steps.metadata.outputs.image }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+          REQUEST_ID: ${{ inputs.request-id }}
+        shell: bash
+        run: |
+          printf '### RodSandbox hosted build\n\nRequest: `%s`\n\nImage: `%s@%s`\n\n[Run and logs](https://github.com/%s/actions/runs/%s)\n' "$REQUEST_ID" "$IMAGE" "$DIGEST" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
