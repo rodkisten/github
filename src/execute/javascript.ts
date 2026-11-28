@@ -1,11 +1,10 @@
-import * as core from '@actions/core';
-import * as gh from '@actions/github';
+import { runAction } from '../utils/action.js';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 
-async function main() {
+runAction('Execute JavaScript', async ({ core, octoKit: gh }) => {
   const token = process.env.ROD_EXEC_TOKEN;
   delete process.env.ROD_EXEC_TOKEN;
   if (token) core.setSecret(token);
@@ -29,5 +28,4 @@ async function main() {
     result = await new AsyncFunction(...Object.keys(helpers), process.env.SCRIPT ?? '')(...Object.values(helpers));
   }
   core.setOutput('result', JSON.stringify(result ?? null));
-}
-main().catch(error => core.setFailed(error instanceof Error ? error.message : String(error)));
+});
