@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
-import * as github from '@actions/github';
 import { runAction } from '../utils/action.js';
 import { validateBranchName } from '../utils/git.js';
 import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
+import { style } from '../utils/logger.js';
 import { summary } from '../utils/summary.js';
 import { createAtomicCommit } from './operation.js';
 import { validateChanges, type FileChange } from './validate.js';
 
-runAction('App-Authored Commit', async () => {
-  const { owner, repo } = github.context.repo;
+runAction('App-Authored Commit', async ({ logger, git, octoKit }) => {
+  const { owner, repo } = octoKit.context.repo;
+  const { validateBranchName } = git;
 
   logger.banner('App-Authored Commit', `${owner}/${repo}`);
 
@@ -17,7 +17,7 @@ runAction('App-Authored Commit', async () => {
     const parsed = getInputs({
       token: { required: true, secret: true },
       branch: { required: true },
-      base: { default: github.context.payload.repository?.default_branch || 'main' },
+      base: { default: octoKit.context.payload.repository?.default_branch || 'main' },
       message: { required: true },
       files: { default: '' },
       'files-path': { default: '' },
@@ -47,7 +47,7 @@ runAction('App-Authored Commit', async () => {
     return { ...parsed, fileChanges };
   });
 
-  const octokit = github.getOctokit(inputs.token);
+  const octokitInstance = octoKit.getOctokit(inputs.token);
 
   const result = await createAtomicCommit(octokit, {
     owner,
