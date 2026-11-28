@@ -2,11 +2,12 @@ import * as core from '@actions/core';
 import { logger, style } from './logger.js';
 import * as utils from './inputs.js';
 import { summary } from './summary.js';
-import * as cmd from './cmd.js';
+import { cmd } from './cmd.js';
 import * as git from './git.js';
 import * as octoKit from '@actions/github';
 
 export interface ActionContext {
+  core: typeof core;
   logger: typeof logger;
   utils: typeof utils;
   cmd: typeof cmd;
@@ -25,7 +26,7 @@ export async function runAction(
   fn: (ctx: ActionContext) => Promise<void>
 ): Promise<void> {
   try {
-    await fn({ logger, utils, cmd, style, summary, git, octoKit });
+    await fn({ core, logger, utils, cmd, style, summary, git, octoKit });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(message, name);

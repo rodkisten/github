@@ -4,10 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as core from '@actions/core';
 import { runAction } from '../utils/action.js';
-import { cmd } from '../utils/cmd.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
+import { style } from '../utils/logger.js';
 
 function resolvePlatformBinary(): string {
   const platform = process.platform;
@@ -92,7 +89,8 @@ process.exit(result.status ?? 1);
   chmodSync(targetPath, 0o755);
 }
 
-runAction('Setup rodlog', async () => {
+runAction('Setup rodlog', async ({ cmd, utils, logger, style, summary, core }) => {
+  const { getInputs, setOutputs } = utils;
   const inputs = getInputs({
     'release-base': { default: 'https://rodkisten.github.io/rodlog/releases' },
   });

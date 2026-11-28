@@ -1,9 +1,8 @@
 import * as github from '@actions/github';
 import { runAction } from '../utils/action.js';
 import type { Octokit } from '../utils/git.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
+import { getInputs } from '../utils/inputs.js';
+import { logger } from '../utils/logger.js';
 import {
   buildFilterMatrix,
   type FilterMatrixDefaults,
@@ -152,7 +151,8 @@ async function collectChangedFiles(
   throw new Error(`Unsupported event ${eventName}; use a dedicated dispatch policy`);
 }
 
-runAction('Central Paths Filter', async () => {
+runAction('Central Paths Filter', async ({ utils, logger, style, summary, octoKit: github }) => {
+  const { setOutputs } = utils;
   const { owner, repo } = github.context.repo;
 
   logger.banner('Central Paths Filter', `${owner}/${repo} · ${github.context.eventName}`);

@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs';
-import * as github from '@actions/github';
-import { runAction } from '../utils/action.js';
-import { gitSync } from '../utils/git.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
+import { runAction, type ActionContext } from '../utils/action.js';
+import { style } from '../utils/logger.js';
 
 export type ReportResult = {
   language: string;
@@ -63,7 +60,9 @@ export function reportMarkdown(
   ].join('\n');
 }
 
-export async function runFormatReportAction(): Promise<void> {
+export async function runFormatReportAction({ git, utils, logger, style, octoKit: github }: ActionContext): Promise<void> {
+  const { gitSync } = git;
+  const { getInputs, setOutputs } = utils;
   const { owner, repo } = github.context.repo;
 
   const inputs = getInputs({

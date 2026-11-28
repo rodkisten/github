@@ -180,7 +180,8 @@ async function runReportStep(
   });
 }
 
-runAction('Rod Actions Console', async () => {
+runAction('Rod Actions Console', async ({ utils, logger, style, octoKit: github }) => {
+  const { setOutputs } = utils;
   const { owner, repo } = github.context.repo;
 
   logger.banner('Rod Actions Console', `${owner}/${repo} · Run #${github.context.runId}`);

@@ -1,11 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { extname } from 'node:path';
-import * as core from '@actions/core';
-import { runAction } from '../utils/action.js';
-import { listChangedFiles, listTrackedFiles, listWorkspaceChanges } from '../utils/git.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
+import { runAction, type ActionContext } from '../utils/action.js';
+import { listChangedFiles, listTrackedFiles } from '../utils/git.js';
+import { logger } from '../utils/logger.js';
 import { execute } from './process.js';
 import { shellDialect, shellTools } from './shell.js';
 
@@ -158,7 +155,9 @@ export async function formatFiles(
   return results;
 }
 
-export async function runFormatAction(): Promise<void> {
+export async function runFormatAction({ git, utils, logger, style, summary }: ActionContext): Promise<void> {
+  const { listWorkspaceChanges } = git;
+  const { getInputs, setOutputs } = utils;
   const inputs = getInputs({
     mode: { default: 'check' },
     scope: { default: 'changed' },

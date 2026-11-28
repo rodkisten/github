@@ -1,15 +1,6 @@
-import * as github from '@actions/github';
 import Handlebars from 'handlebars';
 import { createOrUpdatePullRequest } from '../create-pr/operation.js';
 import { runAction } from '../utils/action.js';
-import {
-  commitViaGitDatabase,
-  listWorkspaceChanges,
-  validateBranchName,
-} from '../utils/git.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 
 function registerHelpers() {
   Handlebars.registerHelper('upper', (value: unknown) => String(value ?? '').toUpperCase());
@@ -34,7 +25,9 @@ function render(template: string, context: Record<string, unknown>, label: strin
   }
 }
 
-runAction('Publish Git Changes', async () => {
+runAction('Publish Git Changes', async ({ git, utils, logger, style, summary, octoKit: github }) => {
+  const { commitViaGitDatabase, listWorkspaceChanges, validateBranchName } = git;
+  const { getInputs, setOutputs } = utils;
   registerHelpers();
 
   const context = github.context;

@@ -1,13 +1,10 @@
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
 import { runAction } from '../utils/action.js';
-import { cmd } from '../utils/cmd.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
 
-runAction('Setup Node Workspace', async () => {
+runAction('Setup Node Workspace', async ({ cmd, utils, logger, style, core }) => {
+  const { getInputs, setOutputs } = utils;
   const inputs = getInputs({
     'node-version': { default: '24' },
     'working-directory': { default: '.' },

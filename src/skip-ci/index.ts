@@ -1,11 +1,8 @@
-import * as github from '@actions/github';
 import { runAction } from '../utils/action.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 import { evaluateSkipCi } from './rules.js';
 
-runAction('Skip CI Decision', async () => {
+runAction('Skip CI Decision', async ({ utils, logger, style, summary, octoKit: github }) => {
+  const { getInputs, setOutputs } = utils;
   const { owner, repo } = github.context.repo;
   logger.banner('Skip CI Decision', `${owner}/${repo}`);
 

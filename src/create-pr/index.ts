@@ -1,12 +1,9 @@
-import * as github from '@actions/github';
 import { runAction } from '../utils/action.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 import { appendConversationUrl } from './helpers.js';
 import { createOrUpdatePullRequest } from './operation.js';
 
-runAction('Create or Update PR', async () => {
+runAction('Create or Update PR', async ({ utils, logger, style, summary, octoKit: github }) => {
+  const { getInputs, setOutputs } = utils;
   const { owner, repo } = github.context.repo;
 
   logger.banner('Create or Update PR', `${owner}/${repo}`);

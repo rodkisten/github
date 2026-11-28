@@ -1,13 +1,10 @@
 import { resolve } from 'node:path';
-import * as core from '@actions/core';
 import { runAction } from '../utils/action.js';
-import { getInputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 import { execute, type CommandResult } from './runner.js';
 import { getTasks } from './tasks.js';
 
-runAction('TypeScript Node CI', async () => {
+runAction('TypeScript Node CI', async ({ utils, logger, style, summary }) => {
+  const { getInputs } = utils;
   const inputs = getInputs({
     'working-directory': { default: '.' },
     scope: { default: '' },

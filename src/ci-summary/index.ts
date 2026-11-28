@@ -1,14 +1,12 @@
 import { bannerMarkdown } from '../../packages/comment-kit/index.mjs';
 import { runAction } from '../utils/action.js';
-import { getInputs } from '../utils/inputs.js';
-import { logger, style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 
 function sanitizeCell(value: string): string {
   return value.replaceAll('|', '\\|').replaceAll('\n', ' ');
 }
 
-runAction('CI Report', async () => {
+runAction('CI Report', async ({ utils, logger, style, summary }) => {
+  const { getInputs } = utils;
   if (!process.env.GITHUB_STEP_SUMMARY) {
     throw new Error('GITHUB_STEP_SUMMARY is not set');
   }

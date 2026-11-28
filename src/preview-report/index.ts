@@ -2,17 +2,15 @@ import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
-import * as github from '@actions/github';
 import { runAction } from '../utils/action.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { logger } from '../utils/logger.js';
 import { MARKER, parseReport, renderReport } from './render.js';
 
 import { workflowSections } from './metrics.js';
 import { bundleSections, parseSnapshot, historicalSection } from './bundle.js';
 import { gitSections, previousVerifiedSha } from './git.js';
 
-runAction('Rod Preview Report', async () => {
+runAction('Rod Preview Report', async ({ utils, logger, octoKit: github }) => {
+  const { getInputs, setOutputs } = utils;
   const { owner, repo } = github.context.repo;
   const inputs = getInputs({
     'github-token': { required: true, secret: true },

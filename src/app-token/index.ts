@@ -162,7 +162,7 @@ async function runPost(): Promise<void> {
   logger.divider('', '═');
 }
 
-runAction('GitHub App Token', async () => {
+runAction('GitHub App Token', async ({ core }) => {
   const isPost = Boolean(core.getState('isPost'));
 
   if (!isPost) {
