@@ -1,15 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { runAction } from '../utils/action.js';
-import { validateBranchName } from '../utils/git.js';
-import { getInputs, setOutputs } from '../utils/inputs.js';
-import { style } from '../utils/logger.js';
-import { summary } from '../utils/summary.js';
 import { createAtomicCommit } from './operation.js';
 import { validateChanges, type FileChange } from './validate.js';
 
-runAction('App-Authored Commit', async ({ logger, git, octoKit }) => {
+runAction('App-Authored Commit', async ({ logger, git, octoKit, utils, style, summary }) => {
   const { owner, repo } = octoKit.context.repo;
   const { validateBranchName } = git;
+  const { getInputs, setOutputs } = utils;
 
   logger.banner('App-Authored Commit', `${owner}/${repo}`);
 
@@ -49,7 +46,7 @@ runAction('App-Authored Commit', async ({ logger, git, octoKit }) => {
 
   const octokitInstance = octoKit.getOctokit(inputs.token);
 
-  const result = await createAtomicCommit(octokit, {
+  const result = await createAtomicCommit(octokitInstance, {
     owner,
     repo,
     branch: inputs.branch,
