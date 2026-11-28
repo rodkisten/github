@@ -137,7 +137,7 @@ jobs:
           IMAGE: ${{ steps.metadata.outputs.image }}
           DIGEST: ${{ steps.image.outputs.digest }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
-          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
         shell: bash
         run: |
           node --input-type=module <<'NODE'
