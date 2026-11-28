@@ -138,10 +138,12 @@ jobs:
           DIGEST: ${{ steps.image.outputs.digest }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
           WORKFLOW_SHA: ${{ github.sha }}
+          RESULT_DIR: ${{ runner.temp }}/rod-runtime-${{ inputs.request-id }}
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          import {writeFileSync} from 'node:fs';
+          import {writeFileSync,mkdirSync} from 'node:fs';
+          import {join} from 'node:path';
           import assert from 'node:assert/strict';
           const env=process.env;
           assert.match(env.DIGEST,/^sha256:[a-f0-9]{64}$/);
@@ -150,13 +152,14 @@ jobs:
           const workflowFile=env.WORKFLOW_REF.slice(prefix.length).split('@')[0];
           assert.match(workflowFile,/^\.github\/workflows\/[A-Za-z0-9_-]+\.ya?ml$/);
           const result={schemaVersion:1,requestId:env.REQUEST_ID,workspaceId:env.WORKSPACE_ID,targetId:env.TARGET_ID,repository:env.GITHUB_REPOSITORY.toLowerCase(),sourceSha:env.SOURCE_SHA,workflowSha:env.WORKFLOW_SHA,workflowFile,runId:Number(env.GITHUB_RUN_ID),runAttempt:Number(env.GITHUB_RUN_ATTEMPT),imageRepository:env.IMAGE,digest:env.DIGEST,platforms:env.PLATFORMS.split(',')};
-          writeFileSync('runtime-build-result.json',JSON.stringify(result,null,2));
+          mkdirSync(env.RESULT_DIR,{recursive:true,mode:0o700});
+          writeFileSync(join(env.RESULT_DIR,'runtime-build-result.json'),JSON.stringify(result,null,2),{mode:0o600});
           NODE
       - name: Archive provenance receipt
         uses: actions/upload-artifact@v4
         with:
           name: rod-build-${{ inputs.request-id }}-attempt-${{ github.run_attempt }}
-          path: runtime-build-result.json
+          path: ${{ runner.temp }}/rod-runtime-${{ inputs.request-id }}/runtime-build-result.json
           retention-days: 30
           if-no-files-found: error
       - name: Link image and build
